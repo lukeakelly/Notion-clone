@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getRecord } from "@/server/services/records";
 import { ENTITIES } from "@/lib/entities";
+import { RELATION_LABELS } from "@/lib/relations";
 import { RecordHeader } from "@/components/record/record-header";
 import { RecordBody } from "@/components/record/record-body";
 import { DataFieldsPanel } from "@/components/record/data-fields-panel";
@@ -87,7 +88,9 @@ function ContextRail({ record }: { record: Awaited<ReturnType<typeof getRecord>>
     ["supports", "addresses", "informed_by", "derived_from", "belongs_to"].includes(l.relation),
   );
   const depends = record.incomingLinks.filter((l) =>
-    ["depends_on", "blocks", "affects"].includes(l.relation),
+    ["depends_on", "blocks", "affects", "supports", "addresses", "belongs_to"].includes(
+      l.relation,
+    ),
   );
   const evidence = record.incomingLinks.filter((l) =>
     ["validates", "invalidates", "informed_by", "derived_from"].includes(l.relation),
@@ -97,17 +100,32 @@ function ContextRail({ record }: { record: Awaited<ReturnType<typeof getRecord>>
     <div className="space-y-3 rounded-lg border border-neutral-200 bg-white p-4 text-sm dark:border-neutral-800 dark:bg-neutral-950">
       <RailSection title="Why it exists" emptyText="No supporting links.">
         {why.map((l) => (
-          <RailLink key={l.id} id={l.to.id} title={l.to.title} label={l.relation} />
+          <RailLink
+            key={l.id}
+            id={l.to.id}
+            title={l.to.title}
+            label={RELATION_LABELS[l.relation].forward}
+          />
         ))}
       </RailSection>
       <RailSection title="What depends on it" emptyText="Nothing depends on this.">
         {depends.map((l) => (
-          <RailLink key={l.id} id={l.from.id} title={l.from.title} label={l.relation} />
+          <RailLink
+            key={l.id}
+            id={l.from.id}
+            title={l.from.title}
+            label={RELATION_LABELS[l.relation].inverse}
+          />
         ))}
       </RailSection>
       <RailSection title="Evidence" emptyText="No evidence linked.">
         {evidence.map((l) => (
-          <RailLink key={l.id} id={l.from.id} title={l.from.title} label={l.relation} />
+          <RailLink
+            key={l.id}
+            id={l.from.id}
+            title={l.from.title}
+            label={RELATION_LABELS[l.relation].inverse}
+          />
         ))}
       </RailSection>
     </div>

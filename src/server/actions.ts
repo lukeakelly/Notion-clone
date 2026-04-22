@@ -14,6 +14,7 @@ import { createLink, deleteLink } from "@/server/services/links";
 import { prisma } from "@/server/db";
 import type { LinkRelation, Prisma, RecordType } from "@prisma/client";
 import { summariseRecord } from "@/server/services/ai";
+import { ENTITIES } from "@/lib/entities";
 
 async function currentActorId() {
   const session = await auth();
@@ -151,16 +152,28 @@ export async function searchAction(query: string) {
   return (await import("./services/search")).search(query);
 }
 
-export async function findRecordsForPicker(query: string, excludeId?: string) {
+export async function findRecordsForPicker(
+  query: string,
+  excludeId?: string,
+  typeFilter?: RecordType,
+) {
   const q = query.trim();
   const where: Prisma.RecordWhereInput = {
     archivedAt: null,
     ...(excludeId ? { id: { not: excludeId } } : {}),
+    ...(typeFilter ? { type: typeFilter } : {}),
   };
   if (q) {
+    const lower = q.toLowerCase();
+    const matchedTypes = Object.values(ENTITIES)
+      .filter((e) =>
+        [e.type, e.label, e.labelPlural].some((s) => s.toLowerCase().includes(lower)),
+      )
+      .map((e) => e.type);
     where.OR = [
       { title: { contains: q, mode: "insensitive" } },
       { summary: { contains: q, mode: "insensitive" } },
+      ...(matchedTypes.length > 0 ? [{ type: { in: matchedTypes } }] : []),
     ];
   }
   return prisma.record.findMany({

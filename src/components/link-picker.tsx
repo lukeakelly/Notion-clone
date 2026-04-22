@@ -24,6 +24,10 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ENTITIES } from "@/lib/entities";
 
+const TYPE_OPTIONS = Object.values(ENTITIES)
+  .slice()
+  .sort((a, b) => a.label.localeCompare(b.label));
+
 interface PickerRecord {
   id: string;
   title: string;
@@ -42,15 +46,16 @@ export function LinkPickerDialog({
 }) {
   const [q, setQ] = useState("");
   const [relation, setRelation] = useState<LinkRelation>("linked_to");
+  const [typeFilter, setTypeFilter] = useState<RecordType | "">("");
   const [results, setResults] = useState<PickerRecord[]>([]);
   const [selected, setSelected] = useState<PickerRecord | null>(null);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
-  function runSearch(text: string) {
+  function runSearch(text: string, nextType: RecordType | "" = typeFilter) {
     setQ(text);
     startTransition(async () => {
-      const rs = await findRecordsForPicker(text, fromId);
+      const rs = await findRecordsForPicker(text, fromId, nextType || undefined);
       setResults(rs as PickerRecord[]);
     });
   }
@@ -98,13 +103,36 @@ export function LinkPickerDialog({
           </div>
           <div className="space-y-1">
             <Label>Target record</Label>
-            <Input
-              autoFocus
-              placeholder="Search…"
-              value={q}
-              onChange={(e) => runSearch(e.target.value)}
-              onFocus={() => runSearch(q)}
-            />
+            <div className="flex gap-2">
+              <Input
+                autoFocus
+                placeholder="Search by title, summary, or type…"
+                value={q}
+                onChange={(e) => runSearch(e.target.value)}
+                onFocus={() => runSearch(q)}
+                className="flex-1"
+              />
+              <Select
+                value={typeFilter || "__all"}
+                onValueChange={(v) => {
+                  const next = v === "__all" ? "" : (v as RecordType);
+                  setTypeFilter(next);
+                  runSearch(q, next);
+                }}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Any type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all">Any type</SelectItem>
+                  {TYPE_OPTIONS.map((e) => (
+                    <SelectItem key={e.type} value={e.type}>
+                      {e.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="mt-2 max-h-64 overflow-y-auto rounded-md border border-neutral-200 dark:border-neutral-800">
               {results.length === 0 && !isPending ? (
                 <div className="p-3 text-xs text-neutral-500">No matches.</div>
