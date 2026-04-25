@@ -9,10 +9,19 @@ import {
   allocateRoles,
 } from "@/lib/estimation";
 
+const DEFAULT_EMAIL = "estimator@estimation-tool.local";
+
 async function requireUser() {
   const session = await auth();
-  if (!session?.user?.id) throw new Error("Not authenticated");
-  return session.user;
+  if (session?.user?.id) return session.user;
+
+  // Fall back to default user for anonymous / demo access
+  const user = await prisma.user.upsert({
+    where: { email: DEFAULT_EMAIL },
+    update: {},
+    create: { email: DEFAULT_EMAIL, name: "estimator", role: "editor" },
+  });
+  return { id: user.id, name: user.name, email: user.email, image: user.image };
 }
 
 // ---- Estimates ----

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/server/auth";
 import OpenAI from "openai";
 
 const SYSTEM_PROMPT = `You are an expert software project estimator. Analyse the provided text (which may be a Business Requirements Document, discovery workshop output, RFP, user stories, or any project brief) and extract structured information for a software project estimate.
@@ -51,11 +50,6 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
-
   const { id } = await params;
   const body = await req.json();
   const { content } = body as { content: string };
