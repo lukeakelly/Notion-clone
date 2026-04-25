@@ -83,6 +83,23 @@ export async function createEstimate(data: {
   return estimate;
 }
 
+const ESTIMATE_ALLOWED_FIELDS = new Set([
+  "projectName", "clientName", "industry", "projectType", "estimateType",
+  "currency", "targetDate", "deliveryModel", "methodology", "status",
+  "rateCardId", "confidence", "confidenceReason",
+  "requirementsClarity", "designMaturity", "integrationFamiliarity",
+  "regulatoryComplexity", "securityComplexity", "performanceNeeds", "techStackFamiliarity",
+  "pmPercent", "baPercent", "archPercent", "qaPercent",
+  "devopsPercent", "securityPercent", "docPercent", "contingencyPercent",
+  "includesFrontEnd", "includesBackEnd", "includesFullStack",
+  "includesApiIntegration", "includesDataLayer", "includesAuth",
+  "includesAdminConsole", "includesReporting", "includesWorkflowEngine",
+  "includesAiCapability", "includesThirdParty", "includesDevOps", "includesMaintenance",
+  "questionnaireData",
+  "totalLowEffort", "totalLikelyEffort", "totalHighEffort",
+  "totalLowCost", "totalLikelyCost", "totalHighCost",
+]);
+
 export async function updateEstimate(
   id: string,
   data: Record<string, unknown>,
@@ -93,10 +110,10 @@ export async function updateEstimate(
   });
   if (!existing) throw new Error("Estimate not found");
 
-  // Clean data - remove undefined values and handle dates
   const cleanData: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {
     if (value === undefined) continue;
+    if (!ESTIMATE_ALLOWED_FIELDS.has(key)) continue;
     if (key === "targetDate" && typeof value === "string") {
       cleanData[key] = value ? new Date(value) : null;
     } else {
@@ -251,14 +268,25 @@ export async function addScopeItem(
   return item;
 }
 
+const SCOPE_ITEM_ALLOWED_FIELDS = new Set([
+  "name", "description", "category", "priority", "complexity",
+  "effortDriver", "lowEffort", "likelyEffort", "highEffort",
+  "assumptions", "exclusions", "risks", "confidence",
+  "overridden", "overrideNote", "sortOrder",
+]);
+
 export async function updateScopeItem(
   id: string,
   data: Record<string, unknown>,
 ) {
   await requireUser();
+  const cleanData: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (SCOPE_ITEM_ALLOWED_FIELDS.has(key)) cleanData[key] = value;
+  }
   const item = await prisma.scopeItem.update({
     where: { id },
-    data,
+    data: cleanData,
   });
   revalidatePath(`/estimates/${item.estimateId}`);
   return item;
@@ -290,9 +318,15 @@ export async function addRisk(
   return risk;
 }
 
+const RISK_ALLOWED_FIELDS = new Set(["description", "impact", "likelihood", "mitigation", "owner"]);
+
 export async function updateRisk(id: string, data: Record<string, unknown>) {
   await requireUser();
-  const risk = await prisma.risk.update({ where: { id }, data });
+  const cleanData: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (RISK_ALLOWED_FIELDS.has(key)) cleanData[key] = value;
+  }
+  const risk = await prisma.risk.update({ where: { id }, data: cleanData });
   revalidatePath(`/estimates/${risk.estimateId}`);
   return risk;
 }
@@ -321,9 +355,15 @@ export async function addAssumption(
   return assumption;
 }
 
+const ASSUMPTION_ALLOWED_FIELDS = new Set(["description", "relatedScopeItem", "status"]);
+
 export async function updateAssumption(id: string, data: Record<string, unknown>) {
   await requireUser();
-  const assumption = await prisma.assumption.update({ where: { id }, data });
+  const cleanData: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (ASSUMPTION_ALLOWED_FIELDS.has(key)) cleanData[key] = value;
+  }
+  const assumption = await prisma.assumption.update({ where: { id }, data: cleanData });
   revalidatePath(`/estimates/${assumption.estimateId}`);
   return assumption;
 }

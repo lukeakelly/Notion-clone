@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/server/db";
-import { auth } from "@/server/auth";
 import ExcelJS from "exceljs";
 import {
   Document,
@@ -20,13 +19,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } },
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const estimate = await prisma.estimate.findFirst({
-    where: { id: params.id, createdById: session.user.id },
+    where: { id: params.id },
     include: {
       scopeItems: { orderBy: { sortOrder: "asc" } },
       roleEstimates: true,
