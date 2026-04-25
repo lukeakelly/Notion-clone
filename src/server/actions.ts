@@ -325,6 +325,85 @@ export async function deleteAssumption(id: string) {
   revalidatePath(`/estimates/${assumption.estimateId}`);
 }
 
+// ---- Bulk Import (AI extraction) ----
+
+export async function bulkImportFromAI(
+  estimateId: string,
+  data: {
+    scopeItems: Array<{
+      name: string;
+      description?: string;
+      category: string;
+      priority?: string;
+      complexity?: string;
+      effortDriver?: string;
+    }>;
+    risks: Array<{
+      description: string;
+      impact?: string;
+      likelihood?: string;
+      mitigation?: string;
+    }>;
+    assumptions: Array<{
+      description: string;
+    }>;
+  },
+) {
+  await requireUser();
+
+  const maxOrder = await prisma.scopeItem.aggregate({
+    where: { estimateId },
+    _max: { sortOrder: true },
+  });
+  let nextOrder = (maxOrder._max.sortOrder ?? -1) + 1;
+
+  const scopeCreates = data.scopeItems.map((item) => {
+    const order = nextOrder++;
+    return prisma.scopeItem.create({
+      data: {
+        estimateId,
+        name: item.name,
+        description: item.description || null,
+        category: item.category,
+        priority: item.priority || "must",
+        complexity: item.complexity || "medium",
+        effortDriver: item.effortDriver || null,
+        sortOrder: order,
+      },
+    });
+  });
+
+  const riskCreates = data.risks.map((r) =>
+    prisma.risk.create({
+      data: {
+        estimateId,
+        description: r.description,
+        impact: r.impact || "medium",
+        likelihood: r.likelihood || "medium",
+        mitigation: r.mitigation || null,
+      },
+    }),
+  );
+
+  const assumptionCreates = data.assumptions.map((a) =>
+    prisma.assumption.create({
+      data: {
+        estimateId,
+        description: a.description,
+      },
+    }),
+  );
+
+  await prisma.$transaction([...scopeCreates, ...riskCreates, ...assumptionCreates]);
+
+  revalidatePath(`/estimates/${estimateId}`);
+  return {
+    scopeItemsAdded: data.scopeItems.length,
+    risksAdded: data.risks.length,
+    assumptionsAdded: data.assumptions.length,
+  };
+}
+
 // ---- Rate Cards ----
 
 export async function getRateCards() {

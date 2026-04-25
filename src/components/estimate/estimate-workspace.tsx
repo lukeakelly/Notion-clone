@@ -16,6 +16,7 @@ import {
   History,
   ClipboardList,
   RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import {
   recalculateEstimate,
@@ -33,12 +34,14 @@ import { OverheadSettings } from "./overhead-settings";
 import { QuestionnairePanel } from "./questionnaire-panel";
 import { VersionHistory } from "./version-history";
 import { ExportPanel } from "./export-panel";
+import { RequirementsIntake } from "./requirements-intake";
 
 type EstimateData = NonNullable<Awaited<ReturnType<typeof import("@/server/actions").getEstimate>>>;
 type RateCardData = Awaited<ReturnType<typeof import("@/server/actions").getRateCards>>;
 
 const TABS = [
   { id: "scope", label: "Scope", icon: List },
+  { id: "import", label: "Import", icon: Sparkles },
   { id: "questionnaire", label: "Questionnaire", icon: ClipboardList },
   { id: "summary", label: "Summary", icon: BarChart3 },
   { id: "risks", label: "Risks", icon: AlertTriangle },
@@ -236,6 +239,9 @@ export function EstimateWorkspace({
       <div className="min-h-[400px]">
         {activeTab === "scope" && (
           <ScopeBuilder estimateId={estimate.id} scopeItems={estimate.scopeItems} />
+        )}
+        {activeTab === "import" && (
+          <RequirementsIntake estimateId={estimate.id} />
         )}
         {activeTab === "questionnaire" && (
           <QuestionnairePanel estimateId={estimate.id} data={estimate.questionnaireData} />
