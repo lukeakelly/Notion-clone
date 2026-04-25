@@ -33,14 +33,14 @@ if (process.env.ALLOW_DEV_LOGIN === "true") {
         email: { label: "Email", type: "email" },
       },
       async authorize(credentials) {
-        const email = (credentials?.email as string) ?? "founder@product-os.local";
+        const email = (credentials?.email as string) ?? "estimator@estimation-tool.local";
         const user = await prisma.user.upsert({
           where: { email },
           update: {},
           create: {
             email,
             name: email.split("@")[0],
-            role: "owner",
+            role: "editor",
           },
         });
         return {
