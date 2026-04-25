@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getDashboardStats, getEstimates } from "@/server/actions";
 import { formatDate } from "@/lib/utils";
 import { STATUS_COLORS, ESTIMATE_TYPES, PROJECT_TYPES, CONFIDENCE_LEVELS } from "@/lib/constants";
@@ -23,10 +24,15 @@ function formatCurrency(value: number | null, currency: string = "AUD"): string 
 }
 
 export default async function DashboardPage() {
-  const [stats, estimates] = await Promise.all([
-    getDashboardStats(),
-    getEstimates(),
-  ]);
+  let stats, estimates;
+  try {
+    [stats, estimates] = await Promise.all([
+      getDashboardStats(),
+      getEstimates(),
+    ]);
+  } catch {
+    redirect("/sign-in");
+  }
 
   const recentEstimates = estimates.slice(0, 8);
 
