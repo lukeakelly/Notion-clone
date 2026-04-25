@@ -1,7 +1,7 @@
 // Estimation calculation engine
 // Implements rule-based estimation with complexity multipliers and delivery overheads
 
-interface ScopeItemInput {
+export interface ScopeItemInput {
   category: string;
   complexity: string;
   effortDriver: string | null;
@@ -12,7 +12,7 @@ interface ScopeItemInput {
   overridden: boolean;
 }
 
-interface EstimateSettings {
+export interface EstimateSettings {
   requirementsClarity: string;
   designMaturity: string;
   integrationFamiliarity: string;
