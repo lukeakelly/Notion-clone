@@ -487,21 +487,22 @@ export async function createRateCard(data: {
 }) {
   await requireUser();
 
-  if (data.isDefault) {
-    await prisma.rateCard.updateMany({ data: { isDefault: false } });
-  }
-
-  const rateCard = await prisma.rateCard.create({
-    data: {
-      name: data.name,
-      description: data.description || null,
-      currency: data.currency || "AUD",
-      isDefault: data.isDefault ?? false,
-      roles: {
-        create: data.roles,
+  const rateCard = await prisma.$transaction(async (tx) => {
+    if (data.isDefault) {
+      await tx.rateCard.updateMany({ data: { isDefault: false } });
+    }
+    return tx.rateCard.create({
+      data: {
+        name: data.name,
+        description: data.description || null,
+        currency: data.currency || "AUD",
+        isDefault: data.isDefault ?? false,
+        roles: {
+          create: data.roles,
+        },
       },
-    },
-    include: { roles: true },
+      include: { roles: true },
+    });
   });
   revalidatePath("/rate-cards");
   return rateCard;
@@ -565,7 +566,13 @@ export async function updateRateCard(
 
 export async function deleteRateCard(id: string) {
   await requireUser();
-  await prisma.rateCard.delete({ where: { id } });
+  const deleted = await prisma.rateCard.delete({ where: { id } });
+  if (deleted.isDefault) {
+    const next = await prisma.rateCard.findFirst({ orderBy: { createdAt: "desc" } });
+    if (next) {
+      await prisma.rateCard.update({ where: { id: next.id }, data: { isDefault: true } });
+    }
+  }
   revalidatePath("/rate-cards");
 }
 
