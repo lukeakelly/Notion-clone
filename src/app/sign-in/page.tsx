@@ -6,9 +6,7 @@ import { Rocket } from "lucide-react";
 
 export default function SignInPage() {
   const hasGoogle = !!process.env.GOOGLE_CLIENT_ID;
-  const allowDev =
-    process.env.NODE_ENV !== "production" &&
-    process.env.ALLOW_DEV_LOGIN === "true";
+  const allowDev = process.env.ALLOW_DEV_LOGIN === "true";
   const previewEmails = (process.env.PREVIEW_LOGIN_ALLOWED_EMAILS ?? "")
     .split(",")
     .map((s) => s.trim())

@@ -24,10 +24,13 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   );
 }
 
-if (
-  process.env.NODE_ENV !== "production" &&
-  process.env.ALLOW_DEV_LOGIN === "true"
-) {
+// Note: NODE_ENV is inlined by Next.js at build time, so a runtime
+// override (e.g. docker-compose `NODE_ENV: development` against an image
+// built with `NODE_ENV=production`) cannot re-enable this provider. We gate
+// solely on ALLOW_DEV_LOGIN, which is read at runtime; the env var name
+// already communicates its dev-only intent and is documented as such in
+// .env.example.
+if (process.env.ALLOW_DEV_LOGIN === "true") {
   providers.push(
     Credentials({
       id: "dev",
