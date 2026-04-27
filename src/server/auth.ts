@@ -79,7 +79,7 @@ if (previewAllowedEmails.length > 0) {
           create: {
             email: raw,
             name: raw.split("@")[0],
-            role: "owner",
+            role: "viewer",
           },
         });
         return {
