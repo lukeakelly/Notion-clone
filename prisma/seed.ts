@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { PrismaClient } from "@prisma/client";
+import { ENTITIES } from "../src/lib/entities";
 
 const prisma = new PrismaClient();
 
@@ -51,7 +52,7 @@ async function main() {
         title: input.title,
         summary: input.summary,
         bodyMd: input.bodyMd ?? null,
-        status: input.status ?? "draft",
+        status: input.status ?? ENTITIES[input.type as keyof typeof ENTITIES].defaultStatus,
         phase: input.phase ?? null,
         priority: input.priority ?? null,
         confidence: input.confidence ?? null,
