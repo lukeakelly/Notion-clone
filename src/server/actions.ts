@@ -86,7 +86,7 @@ export async function createEstimate(data: {
 const ESTIMATE_ALLOWED_FIELDS = new Set([
   "projectName", "clientName", "industry", "projectType", "estimateType",
   "currency", "targetDate", "deliveryModel", "methodology", "status",
-  "rateCardId", "confidence", "confidenceReason",
+  "rateCardId", "confidenceLevel",
   "requirementsClarity", "designMaturity", "integrationFamiliarity",
   "regulatoryComplexity", "securityComplexity", "performanceNeeds", "techStackFamiliarity",
   "pmPercent", "baPercent", "archPercent", "qaPercent",
@@ -233,6 +233,34 @@ export async function duplicateEstimate(id: string) {
   return newEstimate;
 }
 
+// ---- Ownership helpers ----
+
+async function requireEstimateOwner(estimateId: string) {
+  const user = await requireUser();
+  const estimate = await prisma.estimate.findFirst({ where: { id: estimateId, createdById: user.id } });
+  if (!estimate) throw new Error("Estimate not found");
+  return user;
+}
+
+async function requireChildOwner(model: "scopeItem" | "risk" | "assumption", id: string) {
+  const user = await requireUser();
+  let estimateId: string | null = null;
+  if (model === "scopeItem") {
+    const r = await prisma.scopeItem.findUnique({ where: { id }, select: { estimateId: true } });
+    estimateId = r?.estimateId ?? null;
+  } else if (model === "risk") {
+    const r = await prisma.risk.findUnique({ where: { id }, select: { estimateId: true } });
+    estimateId = r?.estimateId ?? null;
+  } else {
+    const r = await prisma.assumption.findUnique({ where: { id }, select: { estimateId: true } });
+    estimateId = r?.estimateId ?? null;
+  }
+  if (!estimateId) throw new Error("Record not found");
+  const estimate = await prisma.estimate.findFirst({ where: { id: estimateId, createdById: user.id } });
+  if (!estimate) throw new Error("Estimate not found");
+  return user;
+}
+
 // ---- Scope Items ----
 
 export async function addScopeItem(
@@ -246,7 +274,7 @@ export async function addScopeItem(
     effortDriver?: string;
   },
 ) {
-  await requireUser();
+  await requireEstimateOwner(estimateId);
   const maxOrder = await prisma.scopeItem.aggregate({
     where: { estimateId },
     _max: { sortOrder: true },
@@ -279,7 +307,7 @@ export async function updateScopeItem(
   id: string,
   data: Record<string, unknown>,
 ) {
-  await requireUser();
+  await requireChildOwner("scopeItem", id);
   const cleanData: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {
     if (SCOPE_ITEM_ALLOWED_FIELDS.has(key)) cleanData[key] = value;
@@ -293,7 +321,7 @@ export async function updateScopeItem(
 }
 
 export async function deleteScopeItem(id: string) {
-  await requireUser();
+  await requireChildOwner("scopeItem", id);
   const item = await prisma.scopeItem.delete({ where: { id } });
   revalidatePath(`/estimates/${item.estimateId}`);
 }
@@ -304,7 +332,7 @@ export async function addRisk(
   estimateId: string,
   data: { description: string; impact?: string; likelihood?: string; mitigation?: string },
 ) {
-  await requireUser();
+  await requireEstimateOwner(estimateId);
   const risk = await prisma.risk.create({
     data: {
       estimateId,
@@ -321,7 +349,7 @@ export async function addRisk(
 const RISK_ALLOWED_FIELDS = new Set(["description", "impact", "likelihood", "mitigation", "owner"]);
 
 export async function updateRisk(id: string, data: Record<string, unknown>) {
-  await requireUser();
+  await requireChildOwner("risk", id);
   const cleanData: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {
     if (RISK_ALLOWED_FIELDS.has(key)) cleanData[key] = value;
@@ -332,7 +360,7 @@ export async function updateRisk(id: string, data: Record<string, unknown>) {
 }
 
 export async function deleteRisk(id: string) {
-  await requireUser();
+  await requireChildOwner("risk", id);
   const risk = await prisma.risk.delete({ where: { id } });
   revalidatePath(`/estimates/${risk.estimateId}`);
 }
@@ -343,7 +371,7 @@ export async function addAssumption(
   estimateId: string,
   data: { description: string; relatedScopeItem?: string },
 ) {
-  await requireUser();
+  await requireEstimateOwner(estimateId);
   const assumption = await prisma.assumption.create({
     data: {
       estimateId,
@@ -358,7 +386,7 @@ export async function addAssumption(
 const ASSUMPTION_ALLOWED_FIELDS = new Set(["description", "relatedScopeItem", "status"]);
 
 export async function updateAssumption(id: string, data: Record<string, unknown>) {
-  await requireUser();
+  await requireChildOwner("assumption", id);
   const cleanData: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {
     if (ASSUMPTION_ALLOWED_FIELDS.has(key)) cleanData[key] = value;
@@ -369,7 +397,7 @@ export async function updateAssumption(id: string, data: Record<string, unknown>
 }
 
 export async function deleteAssumption(id: string) {
-  await requireUser();
+  await requireChildOwner("assumption", id);
   const assumption = await prisma.assumption.delete({ where: { id } });
   revalidatePath(`/estimates/${assumption.estimateId}`);
 }
@@ -398,7 +426,7 @@ export async function bulkImportFromAI(
     }>;
   },
 ) {
-  await requireUser();
+  await requireEstimateOwner(estimateId);
 
   const maxOrder = await prisma.scopeItem.aggregate({
     where: { estimateId },
