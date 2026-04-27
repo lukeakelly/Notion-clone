@@ -6,7 +6,14 @@ import { Rocket } from "lucide-react";
 
 export default function SignInPage() {
   const hasGoogle = !!process.env.GOOGLE_CLIENT_ID;
-  const allowDev = process.env.ALLOW_DEV_LOGIN === "true";
+  const allowDev =
+    process.env.NODE_ENV !== "production" &&
+    process.env.ALLOW_DEV_LOGIN === "true";
+  const previewEmails = (process.env.PREVIEW_LOGIN_ALLOWED_EMAILS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const allowPreview = previewEmails.length > 0;
   return (
     <div className="flex min-h-screen items-center justify-center bg-neutral-50 p-6 dark:bg-neutral-950">
       <div className="w-full max-w-sm space-y-6 rounded-lg border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
@@ -50,9 +57,35 @@ export default function SignInPage() {
             </Button>
           </form>
         ) : null}
-        {!hasGoogle && !allowDev ? (
+        {allowPreview ? (
+          <form
+            className="space-y-3"
+            action={async (formData) => {
+              "use server";
+              const email = String(formData.get("email") ?? "");
+              await signIn("preview", { email, redirectTo: "/" });
+            }}
+          >
+            <div className="space-y-1">
+              <Label>Email (preview login)</Label>
+              <Input
+                type="email"
+                name="email"
+                defaultValue={previewEmails[0]}
+                required
+              />
+              <p className="text-xs text-neutral-500">
+                Allowed: {previewEmails.join(", ")}
+              </p>
+            </div>
+            <Button type="submit" variant="outline" className="w-full">
+              Continue (preview)
+            </Button>
+          </form>
+        ) : null}
+        {!hasGoogle && !allowDev && !allowPreview ? (
           <p className="text-xs text-red-600">
-            No auth providers configured. Set GOOGLE_CLIENT_ID or ALLOW_DEV_LOGIN=true.
+            No auth providers configured. Set GOOGLE_CLIENT_ID, ALLOW_DEV_LOGIN, or PREVIEW_LOGIN_ALLOWED_EMAILS.
           </p>
         ) : null}
       </div>

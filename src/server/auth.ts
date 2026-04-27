@@ -24,7 +24,10 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   );
 }
 
-if (process.env.ALLOW_DEV_LOGIN === "true") {
+if (
+  process.env.NODE_ENV !== "production" &&
+  process.env.ALLOW_DEV_LOGIN === "true"
+) {
   providers.push(
     Credentials({
       id: "dev",
@@ -40,6 +43,42 @@ if (process.env.ALLOW_DEV_LOGIN === "true") {
           create: {
             email,
             name: email.split("@")[0],
+            role: "owner",
+          },
+        });
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+        };
+      },
+    }),
+  );
+}
+
+const previewAllowedEmails = (process.env.PREVIEW_LOGIN_ALLOWED_EMAILS ?? "")
+  .split(",")
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+
+if (previewAllowedEmails.length > 0) {
+  providers.push(
+    Credentials({
+      id: "preview",
+      name: "Preview login",
+      credentials: {
+        email: { label: "Email", type: "email" },
+      },
+      async authorize(credentials) {
+        const raw = (credentials?.email as string | undefined)?.trim().toLowerCase();
+        if (!raw || !previewAllowedEmails.includes(raw)) return null;
+        const user = await prisma.user.upsert({
+          where: { email: raw },
+          update: {},
+          create: {
+            email: raw,
+            name: raw.split("@")[0],
             role: "owner",
           },
         });
