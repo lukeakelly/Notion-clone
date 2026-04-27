@@ -1,5 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { auth } from "@/server/auth";
+import { prisma } from "@/server/db";
+
+const DEFAULT_EMAIL = "estimator@estimation-tool.local";
+
+async function getUser() {
+  const session = await auth();
+  if (session?.user?.id) return session.user;
+  const user = await prisma.user.upsert({
+    where: { email: DEFAULT_EMAIL },
+    update: {},
+    create: { email: DEFAULT_EMAIL, name: "estimator", role: "editor" },
+  });
+  return { id: user.id };
+}
 
 const SYSTEM_PROMPT = `You are an expert software project estimator. Analyse the provided text (which may be a Business Requirements Document, discovery workshop output, RFP, user stories, or any project brief) and extract structured information for a software project estimate.
 
@@ -50,7 +65,14 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const user = await getUser();
+
   const { id } = await params;
+  const estimate = await prisma.estimate.findFirst({ where: { id, createdById: user.id } });
+  if (!estimate) {
+    return NextResponse.json({ error: "Estimate not found" }, { status: 404 });
+  }
+
   const body = await req.json();
   const { content } = body as { content: string };
 
