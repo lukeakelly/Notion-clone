@@ -6,6 +6,9 @@ WORKDIR /app
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml* ./
+# prisma/ is required because package.json's postinstall runs `prisma generate`,
+# which needs prisma/schema.prisma to be present.
+COPY prisma ./prisma
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile || pnpm install
 
 FROM base AS build
