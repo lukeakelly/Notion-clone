@@ -9,8 +9,8 @@ import { AppTopbar } from "@/components/app-topbar";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Product OS",
-  description: "Internal operating system for building the product.",
+  title: "EstimateOS - Software Project Estimation Tool",
+  description: "Estimate cost, effort and delivery timeline for software projects.",
 };
 
 export default async function RootLayout({
@@ -28,7 +28,7 @@ export default async function RootLayout({
             <AppSidebar />
             <div className="flex min-w-0 flex-1 flex-col">
               <AppTopbar userEmail={session?.user?.email} />
-              <main className="flex-1 p-6">{children}</main>
+              <main className="flex-1 overflow-y-auto p-6">{children}</main>
             </div>
           </div>
         ) : (

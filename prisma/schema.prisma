@@ -1,15 +1,4 @@
-// Product OS — Prisma schema (MVP)
-//
-// Design notes:
-// - A single `Record` table is the shared parent for every first-class entity
-//   (Idea, Feature, Decision, Risk, Assumption, Experiment, etc.) with a
-//   `type` discriminator. Type-specific fields live in the `data` JSON column
-//   and are validated at the Zod layer (see src/lib/entities.ts).
-// - `Link` is a polymorphic, typed relation between Records — the core
-//   cross-linking mechanic.
-// - `Tag`, `Comment`, `Attachment`, `Activity`, `AIOutput` all reference
-//   `Record` by id.
-// - Auth.js tables are standard.
+// Software Project Estimation Tool — Prisma schema (MVP)
 
 generator client {
   provider = "prisma-client-js"
@@ -28,21 +17,13 @@ model User {
   email         String    @unique
   emailVerified DateTime?
   image         String?
-  role          WorkspaceRole @default(viewer)
+  role          String    @default("editor")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   accounts      Account[]
   sessions      Session[]
-  ownedRecords  Record[]  @relation("OwnedRecords")
-  createdRecords Record[] @relation("CreatedRecords")
-  updatedRecords Record[] @relation("UpdatedRecords")
-  comments      Comment[]
-  attachments   Attachment[]
-  activity      Activity[]
-  linksCreated  Link[]
-  permissions   WorkspacePermission[]
-  aiOutputs     AIOutput[]
+  estimates     Estimate[]
 }
 
 model Account {
@@ -80,279 +61,188 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-enum WorkspaceRole {
-  owner
-  admin
-  editor
-  commenter
-  viewer
-}
+// -------------------- Estimation Models --------------------
 
-model WorkspacePermission {
-  id         String            @id @default(cuid())
-  userId     String
-  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  module     Module
-  permission PermissionLevel
-  createdAt  DateTime          @default(now())
+model Estimate {
+  id              String   @id @default(cuid())
+  projectName     String
+  clientName      String
+  industry        String?
+  projectType     String
+  estimateType    String   @default("rom")
+  status          String   @default("draft")
+  version         Int      @default(1)
+  currency        String   @default("AUD")
+  targetDate      DateTime?
+  deliveryModel   String?
+  methodology     String?
 
-  @@unique([userId, module])
-}
+  // Complexity multiplier settings
+  requirementsClarity    String @default("clear")
+  designMaturity         String @default("existing")
+  integrationFamiliarity String @default("known")
+  regulatoryComplexity   String @default("standard")
+  securityComplexity     String @default("standard")
+  performanceNeeds       String @default("standard")
+  techStackFamiliarity   String @default("known")
 
-enum Module {
-  strategy
-  roadmap
-  decisions
-  risks
-  experiments
-  research
-  architecture
-  pricing
-  gtm
-  delivery
-  admin
-}
+  // Delivery overhead percentages
+  pmPercent          Float @default(12.5)
+  baPercent          Float @default(15)
+  archPercent        Float @default(10)
+  qaPercent          Float @default(25)
+  devopsPercent      Float @default(10)
+  securityPercent    Float @default(7.5)
+  docPercent         Float @default(7.5)
+  contingencyPercent Float @default(20)
 
-enum PermissionLevel {
-  none
-  view
-  comment
-  edit
-  admin
-}
+  // Scope selection flags
+  includesFrontEnd       Boolean @default(false)
+  includesBackEnd        Boolean @default(false)
+  includesFullStack      Boolean @default(false)
+  includesApiIntegration Boolean @default(false)
+  includesDataLayer      Boolean @default(false)
+  includesAuth           Boolean @default(false)
+  includesAdminConsole   Boolean @default(false)
+  includesReporting      Boolean @default(false)
+  includesWorkflowEngine Boolean @default(false)
+  includesAiCapability   Boolean @default(false)
+  includesThirdParty     Boolean @default(false)
+  includesDevOps         Boolean @default(false)
+  includesMaintenance    Boolean @default(false)
 
-// -------------------- Records (core model) --------------------
+  // Questionnaire responses stored as JSON
+  questionnaireData Json?
 
-enum RecordType {
-  idea
-  vision
-  thesis
-  problem
-  icp
-  persona
-  differentiator
-  epic
-  feature
-  story
-  task
-  milestone
-  decision
-  assumption
-  risk
-  dependency
-  experiment
-  researchItem
-  meetingSummary
-  architectureComponent
-  architectureOption
-  telephonyRecord
-  memoryModelRecord
-  environment
-  pricingModel
-  package
-  unitEconomicsInput
-  pricingScenario
-  useCase
-  messagingFramework
-  account
-  launchChecklistItem
-}
+  // Calculated totals (cached)
+  totalLowDays    Float?
+  totalLikelyDays Float?
+  totalHighDays   Float?
+  totalLowCost    Float?
+  totalLikelyCost Float?
+  totalHighCost   Float?
+  confidenceLevel String?
 
-enum Phase {
-  mvp
-  v1
-  v1_5
-  v2
-  backlog
-}
-
-enum Priority {
-  p0
-  p1
-  p2
-  p3
-}
-
-enum Confidence {
-  low
-  medium
-  high
-}
-
-model Record {
-  id           String     @id @default(cuid())
-  type         RecordType
-  title        String
-  summary      String?
-  bodyMd       String?
-  status       String     // type-specific status value (see lib/status.ts)
-  phase        Phase?
-  priority     Priority?
-  confidence   Confidence?
-  ownerId      String?
-  owner        User?      @relation("OwnedRecords", fields: [ownerId], references: [id])
-
-  // type-specific fields stored as JSON, validated via Zod schema per type
-  data         Json       @default("{}")
-
-  createdById  String
-  createdBy    User       @relation("CreatedRecords", fields: [createdById], references: [id])
-  updatedById  String
-  updatedBy    User       @relation("UpdatedRecords", fields: [updatedById], references: [id])
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  archivedAt   DateTime?
-
-  tags         TagOnRecord[]
-  outgoingLinks Link[]    @relation("LinkFrom")
-  incomingLinks Link[]    @relation("LinkTo")
-  comments     Comment[]
-  attachments  Attachment[]
-  activity     Activity[]
-  aiOutputs    AIOutput[]
-
-  @@index([type])
-  @@index([status])
-  @@index([phase])
-  @@index([ownerId])
-  @@index([archivedAt])
-  @@index([createdAt])
-}
-
-// -------------------- Links (polymorphic, typed relations) --------------------
-
-enum LinkRelation {
-  supports
-  depends_on
-  blocks
-  informed_by
-  validates
-  invalidates
-  contradicts
-  supersedes
-  belongs_to
-  addresses
-  affects
-  derived_from
-  linked_to
-}
-
-model Link {
-  id          String       @id @default(cuid())
-  fromId      String
-  from        Record       @relation("LinkFrom", fields: [fromId], references: [id], onDelete: Cascade)
-  toId        String
-  to          Record       @relation("LinkTo", fields: [toId], references: [id], onDelete: Cascade)
-  relation    LinkRelation
-  note        String?
-  createdById String
-  createdBy   User         @relation(fields: [createdById], references: [id])
-  createdAt   DateTime     @default(now())
-
-  @@unique([fromId, toId, relation])
-  @@index([toId, relation])
-  @@index([fromId, relation])
-}
-
-// -------------------- Tags --------------------
-
-model Tag {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  kind      TagKind  @default(free)
-  createdAt DateTime @default(now())
-  records   TagOnRecord[]
-}
-
-enum TagKind {
-  free
-  controlled
-  domain
-  phase
-  confidentiality
-}
-
-model TagOnRecord {
-  recordId String
-  tagId    String
-  record   Record @relation(fields: [recordId], references: [id], onDelete: Cascade)
-  tag      Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([recordId, tagId])
-  @@index([tagId])
-}
-
-// -------------------- Comments --------------------
-
-model Comment {
-  id          String    @id @default(cuid())
-  recordId    String
-  record      Record    @relation(fields: [recordId], references: [id], onDelete: Cascade)
-  parentId    String?
-  parent      Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies     Comment[] @relation("CommentReplies")
-  authorId    String
-  author      User      @relation(fields: [authorId], references: [id])
-  bodyMd      String
-  resolvedAt  DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@index([recordId])
-  @@index([parentId])
-}
-
-// -------------------- Attachments --------------------
-
-model Attachment {
-  id            String   @id @default(cuid())
-  recordId      String
-  record        Record   @relation(fields: [recordId], references: [id], onDelete: Cascade)
-  filename      String
-  mime          String
-  size          Int
-  storageKey    String   // local path in dev, S3 key in prod
-  externalUrl   String?  // when the "attachment" is actually a link
-  uploadedById  String
-  uploadedBy    User     @relation(fields: [uploadedById], references: [id])
-  uploadedAt    DateTime @default(now())
-
-  @@index([recordId])
-}
-
-// -------------------- Activity log --------------------
-
-model Activity {
-  id        String   @id @default(cuid())
-  recordId  String
-  record    Record   @relation(fields: [recordId], references: [id], onDelete: Cascade)
-  actorId   String
-  actor     User     @relation(fields: [actorId], references: [id])
-  verb      String   // "created" | "updated" | "linked" | "unlinked" | "commented" | "status_changed" | ...
-  field     String?
-  before    Json?
-  after     Json?
-  createdAt DateTime @default(now())
-
-  @@index([recordId, createdAt])
-}
-
-// -------------------- AI outputs --------------------
-
-model AIOutput {
-  id          String   @id @default(cuid())
-  recordId    String
-  record      Record   @relation(fields: [recordId], references: [id], onDelete: Cascade)
-  action      String   // "summarise" | "extract_actions" | "extract_risks" | "extract_insights" | ...
-  contextIds  String[] // ids of records included in the prompt context
-  content     String   @db.Text
-  model       String
-  tokens      Int?
   createdById String
   createdBy   User     @relation(fields: [createdById], references: [id])
   createdAt   DateTime @default(now())
-  acceptedAt  DateTime?
-  acceptedAs  String?  // "summary" | "task" | "risk" | ...
+  updatedAt   DateTime @updatedAt
 
-  @@index([recordId])
+  rateCardId String?
+  rateCard   RateCard? @relation(fields: [rateCardId], references: [id])
+
+  scopeItems     ScopeItem[]
+  roleEstimates  RoleEstimate[]
+  risks          Risk[]
+  assumptions    Assumption[]
+  versions       EstimateVersion[]
+
+  @@index([status])
+  @@index([createdById])
+  @@index([createdAt])
+}
+
+model ScopeItem {
+  id           String   @id @default(cuid())
+  estimateId   String
+  estimate     Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  category     String
+  priority     String   @default("must")
+  complexity   String   @default("medium")
+  effortDriver String?
+  lowEffort    Float?
+  likelyEffort Float?
+  highEffort   Float?
+  assumptions  String?
+  exclusions   String?
+  risks        String?
+  confidence   String?
+  overridden   Boolean  @default(false)
+  overrideNote String?
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([estimateId])
+}
+
+model RoleEstimate {
+  id         String   @id @default(cuid())
+  estimateId String
+  estimate   Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  role       String
+  days       Float
+  rate       Float
+  cost       Float
+  phase      String?
+  workstream String?
+
+  @@index([estimateId])
+}
+
+model Risk {
+  id          String   @id @default(cuid())
+  estimateId  String
+  estimate    Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  description String
+  impact      String   @default("medium")
+  likelihood  String   @default("medium")
+  mitigation  String?
+  owner       String?
+  createdAt   DateTime @default(now())
+
+  @@index([estimateId])
+}
+
+model Assumption {
+  id               String   @id @default(cuid())
+  estimateId       String
+  estimate         Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  description      String
+  relatedScopeItem String?
+  status           String   @default("active")
+  createdAt        DateTime @default(now())
+
+  @@index([estimateId])
+}
+
+model EstimateVersion {
+  id         String   @id @default(cuid())
+  estimateId String
+  estimate   Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  version    Int
+  snapshot   Json
+  changeNote String?
+  createdAt  DateTime @default(now())
+
+  @@index([estimateId])
+}
+
+model RateCard {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  currency    String         @default("AUD")
+  isDefault   Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  roles     RateCardRole[]
+  estimates Estimate[]
+}
+
+model RateCardRole {
+  id           String   @id @default(cuid())
+  rateCardId   String
+  rateCard     RateCard @relation(fields: [rateCardId], references: [id], onDelete: Cascade)
+  role         String
+  standardRate Float
+  costRate     Float?
+  margin       Float?
+  location     String?
+  seniority    String?
+
+  @@index([rateCardId])
 }

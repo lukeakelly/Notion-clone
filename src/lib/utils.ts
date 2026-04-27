@@ -20,15 +20,3 @@ export function formatDate(d: Date | string | null | undefined): string {
     day: "numeric",
   });
 }
-
-export function riskRating(likelihood?: string | number, impact?: string | number) {
-  const l = Number(likelihood);
-  const i = Number(impact);
-  if (!Number.isFinite(l) || !Number.isFinite(i) || l < 1 || i < 1) return null;
-  const score = l * i;
-  let level: "low" | "medium" | "high" | "critical" = "low";
-  if (score >= 20) level = "critical";
-  else if (score >= 12) level = "high";
-  else if (score >= 6) level = "medium";
-  return { score, level };
-}

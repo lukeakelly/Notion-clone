@@ -1,208 +1,231 @@
 import Link from "next/link";
-import { prisma } from "@/server/db";
-import { requireAuth } from "@/server/require-auth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ENTITIES } from "@/lib/entities";
-import { PHASE_LABELS } from "@/lib/relations";
-import { formatDate, riskRating } from "@/lib/utils";
-import type { RecordType } from "@prisma/client";
+import { getDashboardStats, getEstimates } from "@/server/actions";
+import { formatDate } from "@/lib/utils";
+import { STATUS_COLORS, ESTIMATE_TYPES, PROJECT_TYPES, CONFIDENCE_LEVELS } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+import {
+  Calculator,
+  FileText,
+  Clock,
+  CheckCircle,
+  TrendingUp,
+  Plus,
+  ArrowRight,
+} from "lucide-react";
 
-export const dynamic = "force-dynamic";
+function formatCurrency(value: number | null, currency: string = "AUD"): string {
+  if (value == null) return "-";
+  return new Intl.NumberFormat("en-AU", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(value);
+}
 
-export default async function HomePage() {
-  await requireAuth();
-  const [
-    topPriorities,
-    overdueTasks,
-    activeRisks,
-    latestDecisions,
-    mvpScope,
-    activeExperiments,
-    nextMilestones,
-  ] = await Promise.all([
-    prisma.record.findMany({
-      where: {
-        archivedAt: null,
-        priority: { in: ["p0", "p1"] },
-        status: { notIn: ["done", "dropped", "archived", "rejected", "superseded"] },
-      },
-      orderBy: [{ priority: "asc" }, { updatedAt: "desc" }],
-      take: 10,
-      include: { owner: true },
-    }),
-    prisma.record.findMany({
-      where: {
-        type: "task",
-        archivedAt: null,
-        status: { notIn: ["done", "dropped"] },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 10,
-    }),
-    prisma.record.findMany({
-      where: { type: "risk", archivedAt: null, status: { in: ["open", "mitigating"] } },
-      orderBy: { updatedAt: "desc" },
-      take: 10,
-    }),
-    prisma.record.findMany({
-      where: { type: "decision", archivedAt: null },
-      orderBy: { updatedAt: "desc" },
-      take: 5,
-    }),
-    prisma.record.findMany({
-      where: {
-        phase: "mvp",
-        type: { in: ["feature", "epic"] },
-        archivedAt: null,
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 12,
-    }),
-    prisma.record.findMany({
-      where: {
-        type: "experiment",
-        archivedAt: null,
-        status: { in: ["planned", "running", "analysed"] },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 6,
-    }),
-    prisma.record.findMany({
-      where: { type: "milestone", archivedAt: null, status: { not: "ready" } },
-      orderBy: { updatedAt: "desc" },
-      take: 5,
-    }),
+export default async function DashboardPage() {
+  const [stats, estimates] = await Promise.all([
+    getDashboardStats(),
+    getEstimates(),
   ]);
 
+  const recentEstimates = estimates.slice(0, 8);
+
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Home</h1>
-        <p className="text-sm text-neutral-500">
-          What do we know, what have we decided, what are we building next, why.
-        </p>
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="mt-1 text-sm text-neutral-500">
+            Overview of your software project estimates
+          </p>
+        </div>
+        <Link
+          href="/estimates/new"
+          className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+        >
+          <Plus className="h-4 w-4" />
+          New Estimate
+        </Link>
       </div>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <DashboardList
-          title="Top priorities"
-          empty="No P0/P1 items — go create some."
-          items={topPriorities.map((r) => ({
-            id: r.id,
-            title: r.title,
-            badge: r.priority?.toUpperCase(),
-            type: r.type,
-            meta: r.owner?.name ?? r.owner?.email ?? undefined,
-          }))}
+
+      {/* Stats cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <StatCard
+          icon={<Calculator className="h-5 w-5 text-blue-600" />}
+          label="Total Estimates"
+          value={stats.total}
         />
-        <DashboardList
-          title="Overdue / in-progress tasks"
-          items={overdueTasks.map((r) => ({
-            id: r.id,
-            title: r.title,
-            badge: r.status,
-            type: r.type,
-          }))}
-          empty="No open tasks."
+        <StatCard
+          icon={<FileText className="h-5 w-5 text-amber-600" />}
+          label="Drafts"
+          value={stats.drafts}
         />
-        <DashboardList
-          title="Active risks"
-          items={activeRisks.map((r) => {
-            const data = r.data as { likelihood?: string; impact?: string };
-            const rating = riskRating(data?.likelihood, data?.impact);
-            return {
-              id: r.id,
-              title: r.title,
-              badge: rating ? rating.level : r.status,
-              type: r.type,
-            };
-          })}
-          empty="No active risks."
+        <StatCard
+          icon={<Clock className="h-5 w-5 text-indigo-600" />}
+          label="In Review"
+          value={stats.inReview}
         />
-        <DashboardList
-          title="Latest decisions"
-          items={latestDecisions.map((r) => ({
-            id: r.id,
-            title: r.title,
-            badge: r.status,
-            type: r.type,
-            meta: formatDate(r.updatedAt),
-          }))}
-          empty="No decisions yet."
+        <StatCard
+          icon={<CheckCircle className="h-5 w-5 text-green-600" />}
+          label="Approved"
+          value={stats.approved}
         />
-        <DashboardList
-          title="MVP scope"
-          items={mvpScope.map((r) => ({
-            id: r.id,
-            title: r.title,
-            badge: PHASE_LABELS[r.phase ?? ""] ?? r.phase ?? "",
-            type: r.type,
-            meta: r.status,
-          }))}
-          empty="No items tagged to MVP yet."
+        <StatCard
+          icon={<TrendingUp className="h-5 w-5 text-purple-600" />}
+          label="Pipeline Value"
+          value={formatCurrency(stats.pipelineValue)}
         />
-        <DashboardList
-          title="Active experiments"
-          items={activeExperiments.map((r) => ({
-            id: r.id,
-            title: r.title,
-            badge: r.status,
-            type: r.type,
-          }))}
-          empty="No active experiments."
-        />
-        <DashboardList
-          title="Next milestones"
-          items={nextMilestones.map((r) => ({
-            id: r.id,
-            title: r.title,
-            badge: r.status,
-            type: r.type,
-            meta: (r.data as { targetDate?: string })?.targetDate ?? undefined,
-          }))}
-          empty="No milestones."
-        />
+      </div>
+
+      {/* Confidence distribution */}
+      {stats.total > 0 && (
+        <div className="rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+          <h3 className="mb-3 text-sm font-medium">Confidence Distribution</h3>
+          <div className="flex gap-6">
+            {CONFIDENCE_LEVELS.map((level) => {
+              const count = stats.confidenceDistribution[level.value as keyof typeof stats.confidenceDistribution] ?? 0;
+              return (
+                <div key={level.value} className="flex items-center gap-2">
+                  <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", level.color)}>
+                    {level.label}
+                  </span>
+                  <span className="text-sm font-medium">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Recent estimates */}
+      <div>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Recent Estimates</h2>
+          {estimates.length > 0 && (
+            <Link
+              href="/estimates"
+              className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+            >
+              View all <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          )}
+        </div>
+
+        {recentEstimates.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-neutral-300 bg-white p-12 text-center dark:border-neutral-700 dark:bg-neutral-900">
+            <Calculator className="mx-auto h-10 w-10 text-neutral-400" />
+            <h3 className="mt-3 text-sm font-medium">No estimates yet</h3>
+            <p className="mt-1 text-sm text-neutral-500">
+              Create your first estimate to get started.
+            </p>
+            <Link
+              href="/estimates/new"
+              className="mt-4 inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              <Plus className="h-4 w-4" />
+              New Estimate
+            </Link>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950">
+                  <th className="px-4 py-3 text-left font-medium text-neutral-600">Project</th>
+                  <th className="px-4 py-3 text-left font-medium text-neutral-600">Client</th>
+                  <th className="px-4 py-3 text-left font-medium text-neutral-600">Type</th>
+                  <th className="px-4 py-3 text-left font-medium text-neutral-600">Status</th>
+                  <th className="px-4 py-3 text-left font-medium text-neutral-600">Confidence</th>
+                  <th className="px-4 py-3 text-right font-medium text-neutral-600">Likely Cost</th>
+                  <th className="px-4 py-3 text-left font-medium text-neutral-600">Items</th>
+                  <th className="px-4 py-3 text-left font-medium text-neutral-600">Updated</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentEstimates.map((est) => {
+                  const estType = ESTIMATE_TYPES.find((t) => t.value === est.estimateType);
+                  const projType = PROJECT_TYPES.find((t) => t.value === est.projectType);
+                  const confLevel = CONFIDENCE_LEVELS.find((c) => c.value === est.confidenceLevel);
+                  return (
+                    <tr
+                      key={est.id}
+                      className="border-b border-neutral-100 last:border-b-0 dark:border-neutral-800"
+                    >
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/estimates/${est.id}`}
+                          className="font-medium text-blue-600 hover:text-blue-700"
+                        >
+                          {est.projectName}
+                        </Link>
+                        {estType && (
+                          <div className="text-xs text-neutral-500">{estType.label}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-neutral-600">{est.clientName}</td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs text-neutral-500">
+                          {projType?.label ?? est.projectType}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={cn(
+                            "rounded-full px-2 py-0.5 text-xs font-medium",
+                            STATUS_COLORS[est.status] ?? "bg-neutral-100 text-neutral-700",
+                          )}
+                        >
+                          {est.status.replace(/_/g, " ")}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {confLevel ? (
+                          <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", confLevel.color)}>
+                            {confLevel.label}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-neutral-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-sm">
+                        {formatCurrency(est.totalLikelyCost, est.currency)}
+                      </td>
+                      <td className="px-4 py-3 text-neutral-500">
+                        {est._count.scopeItems}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-neutral-500">
+                        {formatDate(est.updatedAt)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function DashboardList({
-  title,
-  items,
-  empty,
+function StatCard({
+  icon,
+  label,
+  value,
 }: {
-  title: string;
-  empty: string;
-  items: { id: string; title: string; badge?: string | null; type: RecordType; meta?: string }[];
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-1.5">
-        {items.length === 0 ? (
-          <div className="text-xs text-neutral-400">{empty}</div>
-        ) : (
-          items.map((i) => {
-            const entity = ENTITIES[i.type];
-            const Icon = entity.icon;
-            return (
-              <Link
-                href={`/records/${i.id}`}
-                key={i.id}
-                className="flex items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
-              >
-                <Icon className="h-3.5 w-3.5 text-neutral-400" />
-                <span className="truncate">{i.title}</span>
-                {i.badge ? <Badge className="ml-auto">{i.badge}</Badge> : null}
-                {i.meta ? <span className="text-xs text-neutral-400">{i.meta}</span> : null}
-              </Link>
-            );
-          })
-        )}
-      </CardContent>
-    </Card>
+    <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="flex items-center gap-3">
+        {icon}
+        <div>
+          <p className="text-xs text-neutral-500">{label}</p>
+          <p className="text-lg font-semibold">{value}</p>
+        </div>
+      </div>
+    </div>
   );
 }
