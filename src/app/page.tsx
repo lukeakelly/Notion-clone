@@ -1,101 +1,208 @@
-import Image from "next/image";
+import Link from "next/link";
+import { prisma } from "@/server/db";
+import { requireAuth } from "@/server/require-auth";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ENTITIES } from "@/lib/entities";
+import { PHASE_LABELS } from "@/lib/relations";
+import { formatDate, riskRating } from "@/lib/utils";
+import type { RecordType } from "@prisma/client";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  await requireAuth();
+  const [
+    topPriorities,
+    overdueTasks,
+    activeRisks,
+    latestDecisions,
+    mvpScope,
+    activeExperiments,
+    nextMilestones,
+  ] = await Promise.all([
+    prisma.record.findMany({
+      where: {
+        archivedAt: null,
+        priority: { in: ["p0", "p1"] },
+        status: { notIn: ["done", "dropped", "archived", "rejected", "superseded"] },
+      },
+      orderBy: [{ priority: "asc" }, { updatedAt: "desc" }],
+      take: 10,
+      include: { owner: true },
+    }),
+    prisma.record.findMany({
+      where: {
+        type: "task",
+        archivedAt: null,
+        status: { notIn: ["done", "dropped"] },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 10,
+    }),
+    prisma.record.findMany({
+      where: { type: "risk", archivedAt: null, status: { in: ["open", "mitigating"] } },
+      orderBy: { updatedAt: "desc" },
+      take: 10,
+    }),
+    prisma.record.findMany({
+      where: { type: "decision", archivedAt: null },
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+    }),
+    prisma.record.findMany({
+      where: {
+        phase: "mvp",
+        type: { in: ["feature", "epic"] },
+        archivedAt: null,
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 12,
+    }),
+    prisma.record.findMany({
+      where: {
+        type: "experiment",
+        archivedAt: null,
+        status: { in: ["planned", "running", "analysed"] },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 6,
+    }),
+    prisma.record.findMany({
+      where: { type: "milestone", archivedAt: null, status: { not: "ready" } },
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+    }),
+  ]);
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
+    <div className="mx-auto max-w-6xl space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold">Home</h1>
+        <p className="text-sm text-neutral-500">
+          What do we know, what have we decided, what are we building next, why.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <DashboardList
+          title="Top priorities"
+          empty="No P0/P1 items — go create some."
+          items={topPriorities.map((r) => ({
+            id: r.id,
+            title: r.title,
+            badge: r.priority?.toUpperCase(),
+            type: r.type,
+            meta: r.owner?.name ?? r.owner?.email ?? undefined,
+          }))}
         />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        <DashboardList
+          title="Overdue / in-progress tasks"
+          items={overdueTasks.map((r) => ({
+            id: r.id,
+            title: r.title,
+            badge: r.status,
+            type: r.type,
+          }))}
+          empty="No open tasks."
+        />
+        <DashboardList
+          title="Active risks"
+          items={activeRisks.map((r) => {
+            const data = r.data as { likelihood?: string; impact?: string };
+            const rating = riskRating(data?.likelihood, data?.impact);
+            return {
+              id: r.id,
+              title: r.title,
+              badge: rating ? rating.level : r.status,
+              type: r.type,
+            };
+          })}
+          empty="No active risks."
+        />
+        <DashboardList
+          title="Latest decisions"
+          items={latestDecisions.map((r) => ({
+            id: r.id,
+            title: r.title,
+            badge: r.status,
+            type: r.type,
+            meta: formatDate(r.updatedAt),
+          }))}
+          empty="No decisions yet."
+        />
+        <DashboardList
+          title="MVP scope"
+          items={mvpScope.map((r) => ({
+            id: r.id,
+            title: r.title,
+            badge: PHASE_LABELS[r.phase ?? ""] ?? r.phase ?? "",
+            type: r.type,
+            meta: r.status,
+          }))}
+          empty="No items tagged to MVP yet."
+        />
+        <DashboardList
+          title="Active experiments"
+          items={activeExperiments.map((r) => ({
+            id: r.id,
+            title: r.title,
+            badge: r.status,
+            type: r.type,
+          }))}
+          empty="No active experiments."
+        />
+        <DashboardList
+          title="Next milestones"
+          items={nextMilestones.map((r) => ({
+            id: r.id,
+            title: r.title,
+            badge: r.status,
+            type: r.type,
+            meta: (r.data as { targetDate?: string })?.targetDate ?? undefined,
+          }))}
+          empty="No milestones."
+        />
+      </div>
     </div>
+  );
+}
+
+function DashboardList({
+  title,
+  items,
+  empty,
+}: {
+  title: string;
+  empty: string;
+  items: { id: string; title: string; badge?: string | null; type: RecordType; meta?: string }[];
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-1.5">
+        {items.length === 0 ? (
+          <div className="text-xs text-neutral-400">{empty}</div>
+        ) : (
+          items.map((i) => {
+            const entity = ENTITIES[i.type];
+            const Icon = entity.icon;
+            return (
+              <Link
+                href={`/records/${i.id}`}
+                key={i.id}
+                className="flex items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              >
+                <Icon className="h-3.5 w-3.5 text-neutral-400" />
+                <span className="truncate">{i.title}</span>
+                {i.badge ? <Badge className="ml-auto">{i.badge}</Badge> : null}
+                {i.meta ? <span className="text-xs text-neutral-400">{i.meta}</span> : null}
+              </Link>
+            );
+          })
+        )}
+      </CardContent>
+    </Card>
   );
 }
