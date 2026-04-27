@@ -11,6 +11,15 @@ export async function createLink(params: {
   if (params.fromId === params.toId) {
     throw new Error("Cannot link a record to itself");
   }
+  const existing = await prisma.link.findUnique({
+    where: {
+      fromId_toId_relation: {
+        fromId: params.fromId,
+        toId: params.toId,
+        relation: params.relation,
+      },
+    },
+  });
   const link = await prisma.link.upsert({
     where: {
       fromId_toId_relation: {
@@ -29,22 +38,24 @@ export async function createLink(params: {
     },
   });
 
-  await prisma.activity.createMany({
-    data: [
-      {
-        recordId: params.fromId,
-        actorId: params.actorId,
-        verb: "linked",
-        after: { toId: params.toId, relation: params.relation },
-      },
-      {
-        recordId: params.toId,
-        actorId: params.actorId,
-        verb: "linked",
-        after: { fromId: params.fromId, relation: params.relation },
-      },
-    ],
-  });
+  if (!existing) {
+    await prisma.activity.createMany({
+      data: [
+        {
+          recordId: params.fromId,
+          actorId: params.actorId,
+          verb: "linked",
+          after: { toId: params.toId, relation: params.relation },
+        },
+        {
+          recordId: params.toId,
+          actorId: params.actorId,
+          verb: "linked",
+          after: { fromId: params.fromId, relation: params.relation },
+        },
+      ],
+    });
+  }
 
   return link;
 }

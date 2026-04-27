@@ -62,9 +62,11 @@ async function createTagConnectors(
   names: string[],
 ) {
   const connectors: Prisma.TagOnRecordCreateWithoutRecordInput[] = [];
+  const seen = new Set<string>();
   for (const name of names) {
     const normalised = name.trim().toLowerCase();
-    if (!normalised) continue;
+    if (!normalised || seen.has(normalised)) continue;
+    seen.add(normalised);
     const tag = await tx.tag.upsert({
       where: { name: normalised },
       update: {},
