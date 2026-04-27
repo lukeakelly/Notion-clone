@@ -20,9 +20,13 @@ import {
 import { toast } from "sonner";
 import type { Record as RecordModel } from "@prisma/client";
 
+type ExistingWithTags = RecordModel & {
+  tags?: { tag: { name: string } }[];
+};
+
 interface Props {
   entity: EntityMeta;
-  existing?: RecordModel | null;
+  existing?: ExistingWithTags | null;
 }
 
 export function RecordForm({ entity, existing }: Props) {
@@ -35,9 +39,7 @@ export function RecordForm({ entity, existing }: Props) {
   const [priority, setPriority] = useState<string | null>(existing?.priority ?? null);
   const [confidence, setConfidence] = useState<string | null>(existing?.confidence ?? null);
   const [tags, setTags] = useState<string>(
-    Array.isArray((existing as unknown as { tagsCsv?: string })?.tagsCsv)
-      ? ""
-      : "",
+    existing?.tags?.map((t) => t.tag.name).join(", ") ?? "",
   );
   const dataInit = (existing?.data as Record<string, unknown>) ?? {};
   const [data, setData] = useState<Record<string, string | string[]>>(

@@ -37,13 +37,14 @@ if (
       },
       async authorize(credentials) {
         const email = (credentials?.email as string) ?? "founder@product-os.local";
+        const isFirstUser = (await prisma.user.count()) === 0;
         const user = await prisma.user.upsert({
           where: { email },
           update: {},
           create: {
             email,
             name: email.split("@")[0],
-            role: "owner",
+            role: isFirstUser ? "owner" : "viewer",
           },
         });
         return {

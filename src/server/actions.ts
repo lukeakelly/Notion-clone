@@ -149,6 +149,7 @@ export async function signInDevAction(email: string) {
 }
 
 export async function searchAction(query: string) {
+  await currentActorId();
   return (await import("./services/search")).search(query);
 }
 
@@ -157,6 +158,7 @@ export async function findRecordsForPicker(
   excludeId?: string,
   typeFilter?: RecordType,
 ) {
+  await currentActorId();
   const q = query.trim();
   const where: Prisma.RecordWhereInput = {
     archivedAt: null,
