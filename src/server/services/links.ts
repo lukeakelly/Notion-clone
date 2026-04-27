@@ -63,7 +63,12 @@ export async function createLink(params: {
 export async function deleteLink(id: string, actorId: string) {
   const link = await prisma.link.findUnique({ where: { id } });
   if (!link) return null;
-  await prisma.link.delete({ where: { id } });
+  try {
+    await prisma.link.delete({ where: { id } });
+  } catch {
+    // Concurrent delete: another request already removed the link.
+    return null;
+  }
   await prisma.activity.createMany({
     data: [
       {
