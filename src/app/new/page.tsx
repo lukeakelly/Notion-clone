@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { MODULES, ENTITIES } from "@/lib/entities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireAuth } from "@/server/require-auth";
 
-export default function NewRecordChooser() {
+export default async function NewRecordChooser() {
+  await requireAuth();
   return (
     <div className="mx-auto max-w-5xl space-y-4">
       <h1 className="text-xl font-semibold">New record</h1>

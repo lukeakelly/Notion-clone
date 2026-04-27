@@ -2,12 +2,14 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/server/db";
 import { ENTITIES } from "@/lib/entities";
 import { RecordForm } from "@/components/record/record-form";
+import { requireAuth } from "@/server/require-auth";
 
 export default async function EditRecordPage({
   params,
 }: {
   params: { id: string };
 }) {
+  await requireAuth();
   const record = await prisma.record.findUnique({
     where: { id: params.id },
     include: { tags: { include: { tag: true } } },

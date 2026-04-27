@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/server/db";
+import { requireAuth } from "@/server/require-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ENTITIES } from "@/lib/entities";
@@ -10,6 +11,7 @@ import type { RecordType } from "@prisma/client";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  await requireAuth();
   const [
     topPriorities,
     overdueTasks,

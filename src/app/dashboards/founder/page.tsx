@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/server/db";
+import { requireAuth } from "@/server/require-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ENTITIES } from "@/lib/entities";
@@ -7,6 +8,7 @@ import { ENTITIES } from "@/lib/entities";
 export const dynamic = "force-dynamic";
 
 export default async function FounderDashboard() {
+  await requireAuth();
   const [openDecisions, insights, unvalidated, commercial, gtmTasks, roadmap] = await Promise.all([
     prisma.record.findMany({
       where: { type: "decision", status: { in: ["proposed", "under_review"] }, archivedAt: null },

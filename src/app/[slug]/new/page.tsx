@@ -1,12 +1,14 @@
 import { notFound } from "next/navigation";
 import { entityBySlug } from "@/lib/entities";
 import { RecordForm } from "@/components/record/record-form";
+import { requireAuth } from "@/server/require-auth";
 
-export default function NewRecordPage({
+export default async function NewRecordPage({
   params,
 }: {
   params: { slug: string };
 }) {
+  await requireAuth();
   const entity = entityBySlug(params.slug);
   if (!entity) notFound();
   return (

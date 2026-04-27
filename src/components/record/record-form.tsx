@@ -24,6 +24,11 @@ type ExistingWithTags = RecordModel & {
   tags?: { tag: { name: string } }[];
 };
 
+// Sentinel value for clearable Radix selects: Radix requires a non-empty
+// string for SelectItem.value, so we map UI "None" to this constant and
+// translate back to null in onValueChange.
+const NONE = "__none";
+
 interface Props {
   entity: EntityMeta;
   existing?: ExistingWithTags | null;
@@ -150,11 +155,15 @@ export function RecordForm({ entity, existing }: Props) {
           </Select>
         </Field>
         <Field label="Phase">
-          <Select value={phase ?? ""} onValueChange={(v) => setPhase(v || null)}>
+          <Select
+            value={phase ?? NONE}
+            onValueChange={(v) => setPhase(v === NONE ? null : v)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="–" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value={NONE}>–</SelectItem>
               {PHASES.map((p) => (
                 <SelectItem key={p} value={p}>
                   {PHASE_LABELS[p]}
@@ -164,11 +173,15 @@ export function RecordForm({ entity, existing }: Props) {
           </Select>
         </Field>
         <Field label="Priority">
-          <Select value={priority ?? ""} onValueChange={(v) => setPriority(v || null)}>
+          <Select
+            value={priority ?? NONE}
+            onValueChange={(v) => setPriority(v === NONE ? null : v)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="–" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value={NONE}>–</SelectItem>
               {["p0", "p1", "p2", "p3"].map((p) => (
                 <SelectItem key={p} value={p}>
                   {p.toUpperCase()}
@@ -179,13 +192,14 @@ export function RecordForm({ entity, existing }: Props) {
         </Field>
         <Field label="Confidence">
           <Select
-            value={confidence ?? ""}
-            onValueChange={(v) => setConfidence(v || null)}
+            value={confidence ?? NONE}
+            onValueChange={(v) => setConfidence(v === NONE ? null : v)}
           >
             <SelectTrigger>
               <SelectValue placeholder="–" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value={NONE}>–</SelectItem>
               {["low", "medium", "high"].map((c) => (
                 <SelectItem key={c} value={c}>
                   {c}

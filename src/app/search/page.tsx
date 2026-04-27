@@ -2,6 +2,7 @@ import Link from "next/link";
 import { search } from "@/server/services/search";
 import { ENTITIES } from "@/lib/entities";
 import { Badge } from "@/components/ui/badge";
+import { requireAuth } from "@/server/require-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export default async function SearchPage({
 }: {
   searchParams: { q?: string };
 }) {
+  await requireAuth();
   const q = searchParams.q?.trim() ?? "";
   const results = q ? await search(q) : [];
 

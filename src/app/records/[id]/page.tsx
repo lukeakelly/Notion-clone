@@ -11,6 +11,7 @@ import { ActivityPanel } from "@/components/record/activity-panel";
 import { CommentsPanel } from "@/components/record/comments-panel";
 import { AiPanel } from "@/components/record/ai-panel";
 import { aiEnabled } from "@/server/services/ai";
+import { requireAuth } from "@/server/require-auth";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
@@ -18,6 +19,7 @@ import { Pencil } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 export default async function RecordPage({ params }: { params: { id: string } }) {
+  await requireAuth();
   const record = await getRecord(params.id);
   if (!record) notFound();
   const entity = ENTITIES[record.type];

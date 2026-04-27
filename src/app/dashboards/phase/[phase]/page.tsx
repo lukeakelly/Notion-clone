@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ENTITIES } from "@/lib/entities";
 import { PHASE_LABELS, PHASES } from "@/lib/relations";
+import { requireAuth } from "@/server/require-auth";
 import type { Phase } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,7 @@ export default async function PhaseDashboard({
 }: {
   params: { phase: string };
 }) {
+  await requireAuth();
   if (!PHASES.includes(params.phase as (typeof PHASES)[number])) notFound();
   const phase = params.phase as Phase;
 

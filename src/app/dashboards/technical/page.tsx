@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/server/db";
+import { requireAuth } from "@/server/require-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ENTITIES } from "@/lib/entities";
@@ -8,6 +9,7 @@ import { riskRating } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export default async function TechnicalDashboard() {
+  await requireAuth();
   const [archDecisions, experiments, blocked, environments, highRisks] = await Promise.all([
     prisma.record.findMany({
       where: {

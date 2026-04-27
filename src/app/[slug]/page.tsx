@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { entityBySlug } from "@/lib/entities";
+import { requireAuth } from "@/server/require-auth";
 import { listRecords } from "@/server/services/records";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ export default async function EntityListPage({
   params: { slug: string };
   searchParams: { status?: string; phase?: string; q?: string; tag?: string };
 }) {
+  await requireAuth();
   const entity = entityBySlug(params.slug);
   if (!entity) notFound();
 
