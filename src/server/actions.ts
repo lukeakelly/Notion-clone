@@ -96,7 +96,7 @@ const ESTIMATE_ALLOWED_FIELDS = new Set([
   "includesAdminConsole", "includesReporting", "includesWorkflowEngine",
   "includesAiCapability", "includesThirdParty", "includesDevOps", "includesMaintenance",
   "questionnaireData",
-  "totalLowEffort", "totalLikelyEffort", "totalHighEffort",
+  "totalLowDays", "totalLikelyDays", "totalHighDays",
   "totalLowCost", "totalLikelyCost", "totalHighCost",
 ]);
 
@@ -658,6 +658,18 @@ export async function recalculateEstimate(id: string) {
     await prisma.roleEstimate.createMany({ data: roleEstimateData });
   }
 
+  // Compute total costs from role-specific costs + contingency
+  const roleCostTotal = roleEstimateData.reduce((s, r) => s + r.cost, 0);
+  const contingencyOverhead = calculation.overheads.find((o) => o.label === "Contingency");
+  const contingencyCostLow = contingencyOverhead ? Math.round(contingencyOverhead.lowDays * avgRate) : 0;
+  const contingencyCostLikely = contingencyOverhead ? Math.round(contingencyOverhead.likelyDays * avgRate) : 0;
+  const contingencyCostHigh = contingencyOverhead ? Math.round(contingencyOverhead.highDays * avgRate) : 0;
+
+  // Use ratio of low/high to likely for scaling role costs
+  const likelyDays = calculation.totalEffort.likely || 1;
+  const lowRatio = calculation.totalEffort.low / likelyDays;
+  const highRatio = calculation.totalEffort.high / likelyDays;
+
   // Update estimate totals
   await prisma.estimate.update({
     where: { id },
@@ -665,9 +677,9 @@ export async function recalculateEstimate(id: string) {
       totalLowDays: calculation.totalEffort.low,
       totalLikelyDays: calculation.totalEffort.likely,
       totalHighDays: calculation.totalEffort.high,
-      totalLowCost: Math.round(calculation.totalEffort.low * avgRate),
-      totalLikelyCost: Math.round(calculation.totalEffort.likely * avgRate),
-      totalHighCost: Math.round(calculation.totalEffort.high * avgRate),
+      totalLowCost: Math.round(roleCostTotal * lowRatio) + contingencyCostLow,
+      totalLikelyCost: roleCostTotal + contingencyCostLikely,
+      totalHighCost: Math.round(roleCostTotal * highRatio) + contingencyCostHigh,
       confidenceLevel: calculation.confidenceLevel,
     },
   });

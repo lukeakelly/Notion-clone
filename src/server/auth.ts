@@ -24,7 +24,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   );
 }
 
-if (process.env.ALLOW_DEV_LOGIN === "true") {
+if (process.env.NODE_ENV !== "production" && process.env.ALLOW_DEV_LOGIN === "true") {
   providers.push(
     Credentials({
       id: "dev",
