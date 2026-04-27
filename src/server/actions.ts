@@ -607,9 +607,11 @@ export async function recalculateEstimate(id: string) {
     contingencyPercent: estimate.contingencyPercent,
   };
 
-  // Update scope item efforts
+  // Update scope item efforts (skip fully-overridden items)
   for (const item of estimate.scopeItems) {
-    if (!item.overridden) {
+    const fullyOverridden =
+      item.overridden && item.lowEffort != null && item.likelyEffort != null && item.highEffort != null;
+    if (!fullyOverridden) {
       const effort = calculateScopeItemEffort(item, settings);
       await prisma.scopeItem.update({
         where: { id: item.id },
