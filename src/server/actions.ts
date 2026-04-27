@@ -556,37 +556,39 @@ export async function updateRateCard(
 ) {
   await requireUser();
 
-  if (data.isDefault) {
-    await prisma.rateCard.updateMany({
-      where: { id: { not: id } },
-      data: { isDefault: false },
-    });
-  }
+  const rateCard = await prisma.$transaction(async (tx) => {
+    if (data.isDefault) {
+      await tx.rateCard.updateMany({
+        where: { id: { not: id } },
+        data: { isDefault: false },
+      });
+    }
 
-  if (data.roles) {
-    await prisma.rateCardRole.deleteMany({ where: { rateCardId: id } });
-    await prisma.rateCardRole.createMany({
-      data: data.roles.map((r) => ({
-        rateCardId: id,
-        role: r.role,
-        standardRate: r.standardRate,
-        costRate: r.costRate ?? null,
-        margin: r.margin ?? null,
-        location: r.location ?? null,
-        seniority: r.seniority ?? null,
-      })),
-    });
-  }
+    if (data.roles) {
+      await tx.rateCardRole.deleteMany({ where: { rateCardId: id } });
+      await tx.rateCardRole.createMany({
+        data: data.roles.map((r) => ({
+          rateCardId: id,
+          role: r.role,
+          standardRate: r.standardRate,
+          costRate: r.costRate ?? null,
+          margin: r.margin ?? null,
+          location: r.location ?? null,
+          seniority: r.seniority ?? null,
+        })),
+      });
+    }
 
-  const rateCard = await prisma.rateCard.update({
-    where: { id },
-    data: {
-      name: data.name,
-      description: data.description,
-      currency: data.currency,
-      isDefault: data.isDefault,
-    },
-    include: { roles: true },
+    return tx.rateCard.update({
+      where: { id },
+      data: {
+        name: data.name,
+        description: data.description,
+        currency: data.currency,
+        isDefault: data.isDefault,
+      },
+      include: { roles: true },
+    });
   });
   revalidatePath("/rate-cards");
   return rateCard;
