@@ -10,7 +10,11 @@ export const dynamic = "force-dynamic";
 export default async function TechnicalDashboard() {
   const [archDecisions, experiments, blocked, environments, highRisks] = await Promise.all([
     prisma.record.findMany({
-      where: { type: "decision", archivedAt: null },
+      where: {
+        type: "decision",
+        archivedAt: null,
+        data: { path: ["domain"], equals: "architecture" },
+      },
       orderBy: { updatedAt: "desc" },
       take: 10,
     }),

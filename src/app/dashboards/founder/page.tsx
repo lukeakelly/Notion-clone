@@ -55,7 +55,7 @@ export default async function FounderDashboard() {
         <Panel title="Recent insights" records={insights} />
         <Panel title="Unresolved assumptions" records={unvalidated} />
         <Panel title="Commercial model items" records={commercial} />
-        <Panel title="Open GTM tasks" records={gtmTasks} />
+        <Panel title="Open tasks" records={gtmTasks} />
         <Panel title="Roadmap snapshot" records={roadmap} />
       </div>
     </div>

@@ -60,7 +60,7 @@ export const ENTITIES: Record<RecordType, EntityMeta> = {
     label: "Idea",
     labelPlural: "Ideas",
     slug: "ideas",
-    module: "strategy",
+    module: "delivery",
     icon: Lightbulb,
     description: "Quick-capture raw thought, later promoted.",
     mvp: true,
