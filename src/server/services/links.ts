@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db";
 import type { LinkRelation } from "@prisma/client";
 
@@ -11,34 +12,22 @@ export async function createLink(params: {
   if (params.fromId === params.toId) {
     throw new Error("Cannot link a record to itself");
   }
-  const existing = await prisma.link.findUnique({
-    where: {
-      fromId_toId_relation: {
-        fromId: params.fromId,
-        toId: params.toId,
-        relation: params.relation,
-      },
-    },
-  });
-  const link = await prisma.link.upsert({
-    where: {
-      fromId_toId_relation: {
-        fromId: params.fromId,
-        toId: params.toId,
-        relation: params.relation,
-      },
-    },
-    update: { note: params.note ?? undefined },
-    create: {
-      fromId: params.fromId,
-      toId: params.toId,
-      relation: params.relation,
-      note: params.note ?? undefined,
-      createdById: params.actorId,
-    },
-  });
 
-  if (!existing) {
+  // Race-safe: rely on the (fromId, toId, relation) unique constraint instead
+  // of a separate findUnique check. If the create succeeds, the link is new
+  // and we log activity. If P2002 fires, the link already exists and we just
+  // update its note. This prevents duplicate activity entries when two
+  // concurrent requests create the same link.
+  try {
+    const link = await prisma.link.create({
+      data: {
+        fromId: params.fromId,
+        toId: params.toId,
+        relation: params.relation,
+        note: params.note ?? undefined,
+        createdById: params.actorId,
+      },
+    });
     await prisma.activity.createMany({
       data: [
         {
@@ -55,9 +44,25 @@ export async function createLink(params: {
         },
       ],
     });
+    return link;
+  } catch (err) {
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      return prisma.link.update({
+        where: {
+          fromId_toId_relation: {
+            fromId: params.fromId,
+            toId: params.toId,
+            relation: params.relation,
+          },
+        },
+        data: { note: params.note ?? undefined },
+      });
+    }
+    throw err;
   }
-
-  return link;
 }
 
 export async function deleteLink(id: string, actorId: string) {

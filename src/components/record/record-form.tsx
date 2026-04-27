@@ -240,13 +240,16 @@ export function RecordForm({ entity, existing }: Props) {
                   />
                 ) : f.kind === "enum" ? (
                   <Select
-                    value={(data[f.key] as string) ?? ""}
-                    onValueChange={(v) => setData({ ...data, [f.key]: v })}
+                    value={((data[f.key] as string) || NONE)}
+                    onValueChange={(v) =>
+                      setData({ ...data, [f.key]: v === NONE ? "" : v })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="–" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value={NONE}>–</SelectItem>
                       {(f.options ?? []).map((o) => (
                         <SelectItem key={o} value={o}>
                           {o.replaceAll("_", " ")}
