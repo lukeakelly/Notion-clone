@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cn, formatDate, riskRating, titleCase } from "./utils";
+import { cn, formatDate, formatDateTime, riskRating, titleCase } from "./utils";
 
 describe("utils", () => {
   it("cn merges class names", () => {
@@ -17,6 +17,11 @@ describe("utils", () => {
   it("formatDate formats Date", () => {
     const out = formatDate(new Date("2025-01-15T00:00:00Z"));
     expect(out.length).toBeGreaterThan(0);
+  });
+
+  it("formatDateTime includes time", () => {
+    const out = formatDateTime(new Date("2025-01-15T13:45:00Z"));
+    expect(out).toMatch(/1:45|13:45/);
   });
 
   it("riskRating computes correct band", () => {

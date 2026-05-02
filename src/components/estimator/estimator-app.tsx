@@ -58,7 +58,7 @@ import {
   parseWorkshopText,
   phaseNames,
 } from "@/lib/estimator";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 
 type View =
   | { name: "home" }
@@ -841,7 +841,7 @@ function ProgramView({
                     <td className="px-3 py-3">
                       <Badge>{project.status}</Badge>
                     </td>
-                    <td className="px-3 py-3">{formatDate(project.estimate.lastRecalculatedAt)}</td>
+                    <td className="px-3 py-3">{formatDateTime(project.estimate.lastRecalculatedAt)}</td>
                   </tr>
                 );
               })}
@@ -918,7 +918,7 @@ function ProjectView({
                 </Select>
               </Field>
               <Field label="Last recalculated">
-                <Input value={formatDate(project.estimate.lastRecalculatedAt)} readOnly />
+                <Input value={formatDateTime(project.estimate.lastRecalculatedAt)} readOnly />
               </Field>
             </div>
             <Button onClick={() => onRecalculate(project.id, "recalculate")} className="lg:mt-6">
