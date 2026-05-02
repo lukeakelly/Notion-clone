@@ -3,8 +3,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sparkles } from "lucide-react";
+import { redirect } from "next/navigation";
 
-export default function SignInPage() {
+type SignInPageProps = {
+  searchParams?: {
+    error?: string;
+  };
+};
+
+const simplyaiDomain = "@simplyai.com.au";
+
+function isSimplyaiEmail(email: string) {
+  return email.trim().toLowerCase().endsWith(simplyaiDomain);
+}
+
+export default function SignInPage({ searchParams }: SignInPageProps) {
   const hasGoogle = !!process.env.GOOGLE_CLIENT_ID;
   const allowDev = process.env.ALLOW_DEV_LOGIN === "true";
   const previewEmails = (process.env.PREVIEW_LOGIN_ALLOWED_EMAILS ?? "")
@@ -14,6 +27,7 @@ export default function SignInPage() {
   const allowPreview =
     previewEmails.length > 0 || (process.env.VERCEL_ENV === "preview" && !hasGoogle);
   const previewDefaultEmail = previewEmails[0] ?? "estimator@simplyai.com.au";
+  const showDomainError = searchParams?.error === "domain";
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
       <div className="w-full max-w-sm space-y-6 rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
@@ -42,6 +56,7 @@ export default function SignInPage() {
             action={async (formData) => {
               "use server";
               const email = String(formData.get("email") ?? "estimator@simplyai.com.au");
+              if (!isSimplyaiEmail(email)) redirect("/sign-in?error=domain");
               await signIn("dev", { email, redirectTo: "/" });
             }}
           >
@@ -66,6 +81,7 @@ export default function SignInPage() {
             action={async (formData) => {
               "use server";
               const email = String(formData.get("email") ?? "");
+              if (!isSimplyaiEmail(email)) redirect("/sign-in?error=domain");
               await signIn("preview", { email, redirectTo: "/" });
             }}
           >
@@ -91,6 +107,11 @@ export default function SignInPage() {
         {!hasGoogle && !allowDev && !allowPreview ? (
           <p className="text-xs text-red-600">
             No auth providers configured. Set GOOGLE_CLIENT_ID, ALLOW_DEV_LOGIN, or PREVIEW_LOGIN_ALLOWED_EMAILS. Only @simplyai.com.au emails are accepted.
+          </p>
+        ) : null}
+        {showDomainError ? (
+          <p className="text-xs text-red-600">
+            Use a Simplyai email ending in {simplyaiDomain}.
           </p>
         ) : null}
       </div>
