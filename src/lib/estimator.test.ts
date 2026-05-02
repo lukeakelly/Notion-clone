@@ -4,6 +4,7 @@ import {
   calculateProject,
   createSampleState,
   defaultSettings,
+  parseWorkshopText,
   parseVolumetricCsv,
 } from "./estimator";
 
@@ -46,5 +47,16 @@ describe("estimator calculations", () => {
       averageProcessingTimeMinutes: 12,
       employees: 3,
     });
+  });
+
+  it("extracts workshop complexity from the full notes", () => {
+    const parsed = parseWorkshopText(
+      "Project name: Example\nProcesses: First process; Second process\nProcess descriptions: Manual queue handling.\nApplications: App A\nComplexity: complex",
+      defaultSettings,
+    );
+
+    expect(parsed.processes).toHaveLength(2);
+    expect(parsed.processes[0].complexity).toBe("complex");
+    expect(parsed.processes[1].complexity).toBe("complex");
   });
 });
