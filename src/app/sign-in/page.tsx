@@ -11,7 +11,9 @@ export default function SignInPage() {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  const allowPreview = previewEmails.length > 0;
+  const allowPreview =
+    previewEmails.length > 0 || (process.env.VERCEL_ENV === "preview" && !hasGoogle);
+  const previewDefaultEmail = previewEmails[0] ?? "estimator@simplyai.com.au";
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
       <div className="w-full max-w-sm space-y-6 rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
@@ -72,11 +74,13 @@ export default function SignInPage() {
               <Input
                 type="email"
                 name="email"
-                defaultValue={previewEmails[0]}
+                defaultValue={previewDefaultEmail}
                 required
               />
               <p className="text-xs text-neutral-500">
-                Allowed: {previewEmails.join(", ")}
+                {previewEmails.length > 0
+                  ? `Allowed: ${previewEmails.join(", ")}`
+                  : "Allowed domain: @simplyai.com.au"}
               </p>
             </div>
             <Button type="submit" variant="outline" className="w-full">

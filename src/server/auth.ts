@@ -73,8 +73,11 @@ const previewAllowedEmails = (process.env.PREVIEW_LOGIN_ALLOWED_EMAILS ?? "")
   .split(",")
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);
+const allowPreviewLogin =
+  previewAllowedEmails.length > 0 ||
+  (process.env.VERCEL_ENV === "preview" && !process.env.GOOGLE_CLIENT_ID);
 
-if (previewAllowedEmails.length > 0) {
+if (allowPreviewLogin) {
   providers.push(
     Credentials({
       id: "preview",
@@ -84,7 +87,8 @@ if (previewAllowedEmails.length > 0) {
       },
       async authorize(credentials) {
         const raw = (credentials?.email as string | undefined)?.trim().toLowerCase();
-        if (!raw || !isSimplyaiEmail(raw) || !previewAllowedEmails.includes(raw)) return null;
+        if (!raw || !isSimplyaiEmail(raw)) return null;
+        if (previewAllowedEmails.length > 0 && !previewAllowedEmails.includes(raw)) return null;
         const user = await prisma.user.upsert({
           where: { email: raw },
           update: {},
