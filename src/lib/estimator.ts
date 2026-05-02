@@ -268,19 +268,21 @@ export function parseWorkshopText(text: string, settings: GlobalSettings): Parse
     const steps = readNumberNear(text, "steps", index + 8);
     const businessRules = readNumberNear(text, "business rules", index + 4);
     const exceptions = readNumberNear(text, "exceptions", index + 2);
+    const processApplications = process.applications || applications;
+    const processIntegrations = process.integrations || integrations;
     const flaggedFields: string[] = [];
-    if (!applications) flaggedFields.push("Applications involved");
-    if (!integrations) flaggedFields.push("Integrations");
+    if (!processApplications) flaggedFields.push("Applications involved");
+    if (!processIntegrations) flaggedFields.push("Integrations");
     if (!process.description) flaggedFields.push("Process description");
     return {
       name: process.name,
       description: process.description,
-      applications: process.applications || applications,
+      applications: processApplications,
       complexity,
       steps: process.steps ?? steps,
       businessRules: process.businessRules ?? businessRules,
       exceptions: process.exceptions ?? exceptions,
-      integrations: process.integrations || integrations,
+      integrations: processIntegrations,
       dataDocumentComplexity: readField(lines, ["data/document complexity", "data complexity"]) || "",
       automatablePercentage: settings.defaultAutomatablePercentage,
       flaggedFields,
@@ -297,8 +299,8 @@ export function parseWorkshopText(text: string, settings: GlobalSettings): Parse
   const unclearFields: string[] = [];
   if (!extractedProjectName) unclearFields.push("Project name");
   if (parsedProcesses.length === 0) unclearFields.push("Process names");
-  if (!applications) unclearFields.push("Applications involved");
-  if (!integrations) unclearFields.push("Integrations");
+  if (parsedProcesses.some((process) => !process.applications)) unclearFields.push("Applications involved");
+  if (parsedProcesses.some((process) => !process.integrations)) unclearFields.push("Integrations");
   return {
     projectName,
     processes: parsedProcesses.length > 0 ? parsedProcesses : [{ name: "Process for review" }],

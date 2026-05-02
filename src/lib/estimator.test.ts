@@ -85,7 +85,7 @@ describe("estimator calculations", () => {
         "Project name: Claims Assist",
         "Processes in scope:",
         "- Triage claim: Check inbox and create claim; applications=Outlook, Guidewire; integrations=Guidewire API; steps=9; rules=4; exceptions=2",
-        "- Evidence chase: Request missing evidence; applications=Outlook, SharePoint; steps=6; rules=3; exceptions=1",
+        "- Evidence chase: Request missing evidence; applications=Outlook, SharePoint; integrations=SharePoint documents; steps=6; rules=3; exceptions=1",
         "Complexity: medium",
       ].join("\n"),
       defaultSettings,
@@ -105,9 +105,14 @@ describe("estimator calculations", () => {
       name: "Evidence chase",
       description: "Request missing evidence",
       applications: "Outlook, SharePoint",
+      integrations: "SharePoint documents",
       steps: 6,
       businessRules: 3,
       exceptions: 1,
     });
+    expect(parsed.processes[0].flaggedFields).toEqual([]);
+    expect(parsed.processes[1].flaggedFields).toEqual([]);
+    expect(parsed.unclearFields).not.toContain("Applications involved");
+    expect(parsed.unclearFields).not.toContain("Integrations");
   });
 });
