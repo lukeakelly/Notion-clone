@@ -288,7 +288,7 @@ export function EstimatorApp() {
       const parsedProjectName = parsed.unclearFields.includes("Project name")
         ? project.name
         : parsed.projectName;
-      const updatedProject = {
+      const nextProject: Project = {
         ...project,
         name: parsedProjectName,
         processesInScope: mergedProcesses.length,
@@ -309,11 +309,16 @@ export function EstimatorApp() {
           };
         }),
       };
+      const nextProcesses = [...mergedProcesses, ...otherProcesses];
+      const updatedProject = {
+        ...nextProject,
+        estimate: calculateProject(nextProject, nextProcesses, current.settings),
+      };
       const audit = createAuditEntry(projectId, "ingested", "Workshop notes parsed into editable fields.");
       return {
         ...current,
         projects: current.projects.map((item) => (item.id === projectId ? updatedProject : item)),
-        processes: [...mergedProcesses, ...otherProcesses],
+        processes: nextProcesses,
         auditHistory: [audit, ...current.auditHistory],
       };
     });
@@ -343,12 +348,19 @@ export function EstimatorApp() {
         };
       });
       const audit = createAuditEntry(projectId, "ingested", "CSV volumetric data imported into editable rows.");
+      const otherProcesses = current.processes.filter((process) => process.projectId !== projectId);
+      const nextProcesses = [...merged, ...otherProcesses];
+      const nextProject = { ...project, processesInScope: merged.length };
+      const updatedProject = {
+        ...nextProject,
+        estimate: calculateProject(nextProject, nextProcesses, current.settings),
+      };
       return {
         ...current,
         projects: current.projects.map((item) =>
-          item.id === projectId ? { ...item, processesInScope: merged.length } : item,
+          item.id === projectId ? updatedProject : item,
         ),
-        processes: [...merged, ...current.processes.filter((process) => process.projectId !== projectId)],
+        processes: nextProcesses,
         auditHistory: [audit, ...current.auditHistory],
       };
     });

@@ -263,8 +263,9 @@ export function parseWorkshopText(text: string, settings: GlobalSettings): Parse
   const dependencies = readList(lines, "dependencies");
   const processNames = readProcessNames(lines);
   const processDescription = readField(lines, ["process descriptions", "description"]) || "";
+  const complexityValue = readField(lines, ["complexity", "process complexity"]);
   const parsedProcesses = processNames.map((name, index) => {
-    const complexity = readComplexity(text);
+    const complexity = readComplexity(complexityValue);
     const steps = readNumberNear(text, "steps", index + 8);
     const businessRules = readNumberNear(text, "business rules", index + 4);
     const exceptions = readNumberNear(text, "exceptions", index + 2);

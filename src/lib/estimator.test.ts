@@ -60,6 +60,15 @@ describe("estimator calculations", () => {
     expect(parsed.processes[1].complexity).toBe("complex");
   });
 
+  it("uses the explicit workshop complexity field over description keywords", () => {
+    const parsed = parseWorkshopText(
+      "Project name: Mortgage Automation\nProcesses: Application intake\nApplications: App A\nComplexity: medium\nDescription: This involves complex document validation rules.",
+      defaultSettings,
+    );
+
+    expect(parsed.processes[0].complexity).toBe("medium");
+  });
+
   it("flags missing workshop project names for review", () => {
     const parsed = parseWorkshopText(
       "Processes: First process\nApplications: App A\nComplexity: simple",
