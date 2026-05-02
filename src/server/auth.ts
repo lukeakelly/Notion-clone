@@ -3,7 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { randomBytes } from "crypto";
-import { prisma } from "./db";
+import { getPrisma } from "./db";
 
 declare module "next-auth" {
   interface User {
@@ -21,9 +21,10 @@ declare module "next-auth" {
 const providers: NextAuthConfig["providers"] = [];
 const simplyaiDomain = "@simplyai.com.au";
 const hasDatabase = !!process.env.DATABASE_URL;
+const previewSecret = process.env.PREVIEW_AUTH_SECRET ?? process.env.AUTH_SECRET;
 const fallbackPreviewSecret =
   process.env.VERCEL_ENV === "preview" && !hasDatabase
-    ? randomBytes(32).toString("base64url")
+    ? (previewSecret ?? process.env.VERCEL_GIT_COMMIT_SHA ?? randomBytes(32).toString("base64url"))
     : undefined;
 
 function isSimplyaiEmail(email: string | null | undefined) {
@@ -40,7 +41,7 @@ async function previewUser(email: string, role: "owner" | "viewer") {
       role,
     };
   }
-  const user = await prisma.user.upsert({
+  const user = await getPrisma().user.upsert({
     where: { email },
     update: {},
     create: {
@@ -86,7 +87,7 @@ if (process.env.ALLOW_DEV_LOGIN === "true") {
           .trim()
           .toLowerCase();
         if (!isSimplyaiEmail(email)) return null;
-        const isFirstUser = hasDatabase ? (await prisma.user.count()) === 0 : false;
+        const isFirstUser = hasDatabase ? (await getPrisma().user.count()) === 0 : false;
         return previewUser(email, isFirstUser ? "owner" : "viewer");
       },
     }),
@@ -120,7 +121,7 @@ if (allowPreviewLogin) {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: hasDatabase ? PrismaAdapter(prisma) : undefined,
+  adapter: hasDatabase ? PrismaAdapter(getPrisma()) : undefined,
   secret: process.env.AUTH_SECRET ?? fallbackPreviewSecret,
   session: { strategy: "jwt" },
   providers,
@@ -136,7 +137,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.sub = user.id;
         token.role = user.role;
         if (hasDatabase) {
-          const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+          const dbUser = await getPrisma().user.findUnique({ where: { id: user.id } });
           if (dbUser) token.role = dbUser.role;
         }
       }
