@@ -261,10 +261,9 @@ export function parseWorkshopText(text: string, settings: GlobalSettings): Parse
   const assumptions = readList(lines, "assumptions");
   const risks = readList(lines, "risks");
   const dependencies = readList(lines, "dependencies");
-  const processNames = readProcessNames(lines);
-  const processDescription = readField(lines, ["process descriptions", "description"]) || "";
+  const processDetails = readProcessDetails(lines);
   const complexityValue = readField(lines, ["complexity", "process complexity"]);
-  const parsedProcesses = processNames.map((name, index) => {
+  const parsedProcesses = processDetails.map((process, index) => {
     const complexity = readComplexity(complexityValue);
     const steps = readNumberNear(text, "steps", index + 8);
     const businessRules = readNumberNear(text, "business rules", index + 4);
@@ -272,16 +271,16 @@ export function parseWorkshopText(text: string, settings: GlobalSettings): Parse
     const flaggedFields: string[] = [];
     if (!applications) flaggedFields.push("Applications involved");
     if (!integrations) flaggedFields.push("Integrations");
-    if (!processDescription) flaggedFields.push("Process description");
+    if (!process.description) flaggedFields.push("Process description");
     return {
-      name,
-      description: processDescription,
-      applications,
+      name: process.name,
+      description: process.description,
+      applications: process.applications || applications,
       complexity,
-      steps,
-      businessRules,
-      exceptions,
-      integrations,
+      steps: process.steps ?? steps,
+      businessRules: process.businessRules ?? businessRules,
+      exceptions: process.exceptions ?? exceptions,
+      integrations: process.integrations || integrations,
       dataDocumentComplexity: readField(lines, ["data/document complexity", "data complexity"]) || "",
       automatablePercentage: settings.defaultAutomatablePercentage,
       flaggedFields,
@@ -746,6 +745,115 @@ function readProcessNames(lines: string[]): string[] {
     .split(/;|,/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function readProcessDetails(lines: string[]): Array<{
+  name: string;
+  description: string;
+  applications: string;
+  integrations: string;
+  steps?: number;
+  businessRules?: number;
+  exceptions?: number;
+}> {
+  const namedProcesses = readProcessNames(lines);
+  const processBlock = readSection(lines, ["processes in scope", "process details", "processes"]);
+  const bulletProcesses = processBlock.flatMap(parseProcessBullet);
+  const processes: Array<{
+    name: string;
+    description?: string;
+    applications?: string;
+    integrations?: string;
+    steps?: number;
+    businessRules?: number;
+    exceptions?: number;
+  }> = bulletProcesses.length > 0 ? bulletProcesses : namedProcesses.map((name) => ({ name }));
+  const descriptions = splitListValue(readField(lines, ["process descriptions", "description"]));
+  return processes.map((process, index) => ({
+    name: process.name,
+    description: process.description ?? descriptions[index] ?? descriptions[0] ?? "",
+    applications: process.applications ?? "",
+    integrations: process.integrations ?? "",
+    steps: process.steps,
+    businessRules: process.businessRules,
+    exceptions: process.exceptions,
+  }));
+}
+
+function readSection(lines: string[], names: string[]): string[] {
+  const startIndex = lines.findIndex((line) => {
+    const lower = line.toLowerCase();
+    return names.some((name) => lower === `${name}:` || lower.startsWith(`${name}:`));
+  });
+  if (startIndex < 0) return [];
+  const section: string[] = [];
+  const firstLineValue = lines[startIndex].slice(lines[startIndex].indexOf(":") + 1).trim();
+  if (firstLineValue) section.push(firstLineValue);
+  for (const line of lines.slice(startIndex + 1)) {
+    if (/^[A-Za-z][A-Za-z /-]{1,40}:/.test(line)) break;
+    section.push(line);
+  }
+  return section;
+}
+
+function parseProcessBullet(value: string): Array<{
+  name: string;
+  description?: string;
+  applications?: string;
+  integrations?: string;
+  steps?: number;
+  businessRules?: number;
+  exceptions?: number;
+}> {
+  return value
+    .split(/\n|•/)
+    .flatMap((line) => line.split(/(?=\s*-\s*[A-Za-z][^:;\n]+:)/))
+    .map((raw) => raw.replace(/^[-*]\s*/, "").trim())
+    .filter(Boolean)
+    .flatMap((line) => {
+      if (!line.includes(":")) {
+        return splitListValue(line).map((name) => ({ name }));
+      }
+      const [rawName, ...rest] = line.split(":");
+      const details = rest.join(":").trim();
+      const name = rawName.trim();
+      const description =
+        details
+          .split(/;|\|/)
+          .map((item) => item.trim())
+          .find((item) => item && !item.includes("=") && !item.toLowerCase().startsWith("applications")) ?? "";
+      return [{
+        name,
+        description,
+        applications: readInlineValue(details, ["applications", "apps", "systems"]),
+        integrations: readInlineValue(details, ["integrations", "integration"]),
+        steps: readInlineNumber(details, ["steps"]),
+        businessRules: readInlineNumber(details, ["business rules", "rules"]),
+        exceptions: readInlineNumber(details, ["exceptions"]),
+      }];
+    });
+}
+
+function splitListValue(value: string): string[] {
+  if (!value) return [];
+  return value
+    .split(/;|\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function readInlineValue(text: string, names: string[]): string {
+  for (const name of names) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const match = text.match(new RegExp(`${escaped}\\s*(?:=|:)\\s*([^;|]+)`, "i"));
+    if (match?.[1]) return match[1].trim();
+  }
+  return "";
+}
+
+function readInlineNumber(text: string, names: string[]): number | undefined {
+  const value = readInlineValue(text, names);
+  return value ? toNumber(value) : undefined;
 }
 
 function readComplexity(value: string): Complexity {

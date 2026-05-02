@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   BarChart3,
@@ -882,6 +882,19 @@ function ProjectView({
   onRecalculate: (projectId: string, mode: "resourcesChanged" | "durationChanged" | "recalculate") => void;
 }) {
   const maxChartValue = Math.max(project.estimate.deliveryCost, project.estimate.annualSaving, 1);
+  const csvInputRef = useRef<HTMLInputElement>(null);
+
+  function handleCsvUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      onUpdateProject(project.id, "volumetricCsv", String(reader.result ?? ""));
+      event.target.value = "";
+    };
+    reader.readAsText(file);
+  }
+
   return (
     <div className="space-y-6">
       <Card className="border-blue-100 shadow-sm">
@@ -971,14 +984,26 @@ function ProjectView({
               </Button>
             </Field>
             <Field label="CSV volumetric file">
+              <input
+                ref={csvInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="sr-only"
+                onChange={handleCsvUpload}
+              />
               <Textarea
                 value={project.volumetricCsv}
                 rows={12}
                 onChange={(event) => onUpdateProject(project.id, "volumetricCsv", event.target.value)}
               />
-              <Button variant="outline" className="mt-2" onClick={() => onImportCsv(project.id)}>
-                Parse CSV rows
-              </Button>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button variant="outline" onClick={() => csvInputRef.current?.click()}>
+                  <Upload className="h-4 w-4" /> Upload CSV file
+                </Button>
+                <Button variant="outline" onClick={() => onImportCsv(project.id)}>
+                  Parse CSV rows
+                </Button>
+              </div>
             </Field>
           </CardContent>
         </Card>

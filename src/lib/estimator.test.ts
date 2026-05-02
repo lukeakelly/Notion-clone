@@ -78,4 +78,36 @@ describe("estimator calculations", () => {
     expect(parsed.projectName).toBe("Untitled automation project");
     expect(parsed.unclearFields).toContain("Project name");
   });
+
+  it("extracts structured process details from workshop bullets", () => {
+    const parsed = parseWorkshopText(
+      [
+        "Project name: Claims Assist",
+        "Processes in scope:",
+        "- Triage claim: Check inbox and create claim; applications=Outlook, Guidewire; integrations=Guidewire API; steps=9; rules=4; exceptions=2",
+        "- Evidence chase: Request missing evidence; applications=Outlook, SharePoint; steps=6; rules=3; exceptions=1",
+        "Complexity: medium",
+      ].join("\n"),
+      defaultSettings,
+    );
+
+    expect(parsed.processes).toHaveLength(2);
+    expect(parsed.processes[0]).toMatchObject({
+      name: "Triage claim",
+      description: "Check inbox and create claim",
+      applications: "Outlook, Guidewire",
+      integrations: "Guidewire API",
+      steps: 9,
+      businessRules: 4,
+      exceptions: 2,
+    });
+    expect(parsed.processes[1]).toMatchObject({
+      name: "Evidence chase",
+      description: "Request missing evidence",
+      applications: "Outlook, SharePoint",
+      steps: 6,
+      businessRules: 3,
+      exceptions: 1,
+    });
+  });
 });
