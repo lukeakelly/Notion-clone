@@ -285,9 +285,12 @@ export function EstimatorApp() {
         };
       });
       const otherProcesses = current.processes.filter((process) => process.projectId !== projectId);
+      const parsedProjectName = parsed.unclearFields.includes("Project name")
+        ? project.name
+        : parsed.projectName;
       const updatedProject = {
         ...project,
-        name: parsed.projectName,
+        name: parsedProjectName,
         processesInScope: mergedProcesses.length,
         assumptions: parsed.assumptions.length > 0 ? parsed.assumptions : project.assumptions,
         risks: parsed.risks.length > 0 ? parsed.risks : project.risks,
