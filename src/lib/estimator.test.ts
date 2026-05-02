@@ -59,4 +59,14 @@ describe("estimator calculations", () => {
     expect(parsed.processes[0].complexity).toBe("complex");
     expect(parsed.processes[1].complexity).toBe("complex");
   });
+
+  it("flags missing workshop project names for review", () => {
+    const parsed = parseWorkshopText(
+      "Processes: First process\nApplications: App A\nComplexity: simple",
+      defaultSettings,
+    );
+
+    expect(parsed.projectName).toBe("Untitled automation project");
+    expect(parsed.unclearFields).toContain("Project name");
+  });
 });

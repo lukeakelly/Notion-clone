@@ -254,7 +254,8 @@ export function parseWorkshopText(text: string, settings: GlobalSettings): Parse
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
-  const projectName = readField(lines, ["project name", "project"]) || "Untitled automation project";
+  const extractedProjectName = readField(lines, ["project name", "project"]);
+  const projectName = extractedProjectName || "Untitled automation project";
   const applications = readField(lines, ["applications", "systems"]) || "";
   const integrations = readField(lines, ["integrations", "integration"]) || "";
   const assumptions = readList(lines, "assumptions");
@@ -294,7 +295,7 @@ export function parseWorkshopText(text: string, settings: GlobalSettings): Parse
     notes: `${phase} estimate extracted from workshop notes and editable before saving.`,
   }));
   const unclearFields: string[] = [];
-  if (!projectName) unclearFields.push("Project name");
+  if (!extractedProjectName) unclearFields.push("Project name");
   if (parsedProcesses.length === 0) unclearFields.push("Process names");
   if (!applications) unclearFields.push("Applications involved");
   if (!integrations) unclearFields.push("Integrations");
