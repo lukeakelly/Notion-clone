@@ -14,6 +14,11 @@ declare module "next-auth" {
 }
 
 const providers: NextAuthConfig["providers"] = [];
+const simplyaiDomain = "@simplyai.com.au";
+
+function isSimplyaiEmail(email: string | null | undefined) {
+  return email?.trim().toLowerCase().endsWith(simplyaiDomain) ?? false;
+}
 
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   providers.push(
@@ -39,7 +44,10 @@ if (process.env.ALLOW_DEV_LOGIN === "true") {
         email: { label: "Email", type: "email" },
       },
       async authorize(credentials) {
-        const email = (credentials?.email as string) ?? "founder@product-os.local";
+        const email = ((credentials?.email as string) ?? "estimator@simplyai.com.au")
+          .trim()
+          .toLowerCase();
+        if (!isSimplyaiEmail(email)) return null;
         const isFirstUser = (await prisma.user.count()) === 0;
         const user = await prisma.user.upsert({
           where: { email },
@@ -76,7 +84,7 @@ if (previewAllowedEmails.length > 0) {
       },
       async authorize(credentials) {
         const raw = (credentials?.email as string | undefined)?.trim().toLowerCase();
-        if (!raw || !previewAllowedEmails.includes(raw)) return null;
+        if (!raw || !isSimplyaiEmail(raw) || !previewAllowedEmails.includes(raw)) return null;
         const user = await prisma.user.upsert({
           where: { email: raw },
           update: {},
@@ -105,6 +113,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/sign-in",
   },
   callbacks: {
+    async signIn({ user }) {
+      return isSimplyaiEmail(user.email);
+    },
     async jwt({ token, user }) {
       if (user) {
         token.sub = user.id;
