@@ -5,6 +5,10 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "./db";
 
 declare module "next-auth" {
+  interface User {
+    role?: string;
+  }
+
   interface Session extends DefaultSession {
     user: DefaultSession["user"] & {
       id: string;
@@ -15,9 +19,42 @@ declare module "next-auth" {
 
 const providers: NextAuthConfig["providers"] = [];
 const simplyaiDomain = "@simplyai.com.au";
+const hasDatabase = !!process.env.DATABASE_URL;
+const fallbackPreviewSecret =
+  process.env.VERCEL_ENV === "preview" && !hasDatabase
+    ? `simplyai-estimator-preview-${process.env.VERCEL_URL ?? "local"}`
+    : undefined;
 
 function isSimplyaiEmail(email: string | null | undefined) {
   return email?.trim().toLowerCase().endsWith(simplyaiDomain) ?? false;
+}
+
+async function previewUser(email: string, role: "owner" | "viewer") {
+  if (!hasDatabase) {
+    return {
+      id: `preview-${email}`,
+      name: email.split("@")[0],
+      email,
+      image: null,
+      role,
+    };
+  }
+  const user = await prisma.user.upsert({
+    where: { email },
+    update: {},
+    create: {
+      email,
+      name: email.split("@")[0],
+      role,
+    },
+  });
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    image: user.image,
+    role: user.role,
+  };
 }
 
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
@@ -48,22 +85,8 @@ if (process.env.ALLOW_DEV_LOGIN === "true") {
           .trim()
           .toLowerCase();
         if (!isSimplyaiEmail(email)) return null;
-        const isFirstUser = (await prisma.user.count()) === 0;
-        const user = await prisma.user.upsert({
-          where: { email },
-          update: {},
-          create: {
-            email,
-            name: email.split("@")[0],
-            role: isFirstUser ? "owner" : "viewer",
-          },
-        });
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-        };
+        const isFirstUser = hasDatabase ? (await prisma.user.count()) === 0 : false;
+        return previewUser(email, isFirstUser ? "owner" : "viewer");
       },
     }),
   );
@@ -89,28 +112,15 @@ if (allowPreviewLogin) {
         const raw = (credentials?.email as string | undefined)?.trim().toLowerCase();
         if (!raw || !isSimplyaiEmail(raw)) return null;
         if (previewAllowedEmails.length > 0 && !previewAllowedEmails.includes(raw)) return null;
-        const user = await prisma.user.upsert({
-          where: { email: raw },
-          update: {},
-          create: {
-            email: raw,
-            name: raw.split("@")[0],
-            role: "viewer",
-          },
-        });
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-        };
+        return previewUser(raw, "viewer");
       },
     }),
   );
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
+  adapter: hasDatabase ? PrismaAdapter(prisma) : undefined,
+  secret: process.env.AUTH_SECRET ?? fallbackPreviewSecret,
   session: { strategy: "jwt" },
   providers,
   pages: {
@@ -123,8 +133,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.sub = user.id;
-        const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
-        if (dbUser) token.role = dbUser.role;
+        token.role = user.role;
+        if (hasDatabase) {
+          const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+          if (dbUser) token.role = dbUser.role;
+        }
       }
       return token;
     },
