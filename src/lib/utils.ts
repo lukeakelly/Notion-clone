@@ -21,6 +21,18 @@ export function formatDate(d: Date | string | null | undefined): string {
   });
 }
 
+export function formatDateTime(d: Date | string | null | undefined): string {
+  if (!d) return "";
+  const date = typeof d === "string" ? new Date(d) : d;
+  return date.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function riskRating(likelihood?: string | number, impact?: string | number) {
   const l = Number(likelihood);
   const i = Number(impact);

@@ -2,25 +2,43 @@ import { signIn } from "@/server/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Rocket } from "lucide-react";
+import { Sparkles } from "lucide-react";
+import { redirect } from "next/navigation";
 
-export default function SignInPage() {
+type SignInPageProps = {
+  searchParams?: {
+    error?: string;
+  };
+};
+
+const simplyaiDomain = "@simplyai.com.au";
+
+function isSimplyaiEmail(email: string) {
+  return email.trim().toLowerCase().endsWith(simplyaiDomain);
+}
+
+export default function SignInPage({ searchParams }: SignInPageProps) {
   const hasGoogle = !!process.env.GOOGLE_CLIENT_ID;
   const allowDev = process.env.ALLOW_DEV_LOGIN === "true";
   const previewEmails = (process.env.PREVIEW_LOGIN_ALLOWED_EMAILS ?? "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  const allowPreview = previewEmails.length > 0;
+  const allowPreview =
+    previewEmails.length > 0 || (process.env.VERCEL_ENV === "preview" && !hasGoogle);
+  const previewDefaultEmail = previewEmails[0] ?? "estimator@simplyai.com.au";
+  const showDomainError = searchParams?.error === "domain";
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-50 p-6 dark:bg-neutral-950">
-      <div className="w-full max-w-sm space-y-6 rounded-lg border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
+      <div className="w-full max-w-sm space-y-6 rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-2">
-          <Rocket className="h-5 w-5" />
-          <h1 className="text-lg font-semibold">Product OS</h1>
+          <div className="rounded-lg bg-blue-600 p-1.5 text-white">
+            <Sparkles className="h-4 w-4" />
+          </div>
+          <h1 className="text-lg font-semibold">Simplyai Estimator</h1>
         </div>
         <p className="text-sm text-neutral-500">
-          Sign in to your internal operating system.
+          Sign in with a Simplyai email address.
         </p>
         {hasGoogle ? (
           <form
@@ -37,7 +55,8 @@ export default function SignInPage() {
             className="space-y-3"
             action={async (formData) => {
               "use server";
-              const email = String(formData.get("email") ?? "founder@product-os.local");
+              const email = String(formData.get("email") ?? "estimator@simplyai.com.au");
+              if (!isSimplyaiEmail(email)) redirect("/sign-in?error=domain");
               await signIn("dev", { email, redirectTo: "/" });
             }}
           >
@@ -46,9 +65,10 @@ export default function SignInPage() {
               <Input
                 type="email"
                 name="email"
-                defaultValue="founder@product-os.local"
+                defaultValue="estimator@simplyai.com.au"
                 required
               />
+              <p className="text-xs text-neutral-500">Allowed domain: @simplyai.com.au</p>
             </div>
             <Button type="submit" variant="outline" className="w-full">
               Continue (dev)
@@ -61,6 +81,7 @@ export default function SignInPage() {
             action={async (formData) => {
               "use server";
               const email = String(formData.get("email") ?? "");
+              if (!isSimplyaiEmail(email)) redirect("/sign-in?error=domain");
               await signIn("preview", { email, redirectTo: "/" });
             }}
           >
@@ -69,11 +90,13 @@ export default function SignInPage() {
               <Input
                 type="email"
                 name="email"
-                defaultValue={previewEmails[0]}
+                defaultValue={previewDefaultEmail}
                 required
               />
               <p className="text-xs text-neutral-500">
-                Allowed: {previewEmails.join(", ")}
+                {previewEmails.length > 0
+                  ? `Allowed: ${previewEmails.join(", ")}`
+                  : "Allowed domain: @simplyai.com.au"}
               </p>
             </div>
             <Button type="submit" variant="outline" className="w-full">
@@ -83,7 +106,12 @@ export default function SignInPage() {
         ) : null}
         {!hasGoogle && !allowDev && !allowPreview ? (
           <p className="text-xs text-red-600">
-            No auth providers configured. Set GOOGLE_CLIENT_ID, ALLOW_DEV_LOGIN, or PREVIEW_LOGIN_ALLOWED_EMAILS.
+            No auth providers configured. Set GOOGLE_CLIENT_ID, ALLOW_DEV_LOGIN, or PREVIEW_LOGIN_ALLOWED_EMAILS. Only @simplyai.com.au emails are accepted.
+          </p>
+        ) : null}
+        {showDomainError ? (
+          <p className="text-xs text-red-600">
+            Use a Simplyai email ending in {simplyaiDomain}.
           </p>
         ) : null}
       </div>

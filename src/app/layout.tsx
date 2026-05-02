@@ -9,8 +9,8 @@ import { AppTopbar } from "@/components/app-topbar";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Product OS",
-  description: "Internal operating system for building the product.",
+  title: "Simplyai Estimator",
+  description: "Internal automation project estimation workspace.",
 };
 
 export default async function RootLayout({
@@ -22,7 +22,7 @@ export default async function RootLayout({
   const signedIn = !!session?.user;
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100`}>
+      <body className={`${inter.className} bg-slate-50 text-slate-900`}>
         {signedIn ? (
           <div className="flex min-h-screen">
             <AppSidebar />

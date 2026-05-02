@@ -1,64 +1,46 @@
 import Link from "next/link";
-import { MODULES, ENTITIES } from "@/lib/entities";
-import { Home, Search, Rocket, Plus, LayoutDashboard } from "lucide-react";
+import { Home, Sparkles, LayoutDashboard, Calculator, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function AppSidebar() {
   return (
-    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 md:flex">
-      <div className="flex h-14 items-center gap-2 border-b border-neutral-200 px-4 dark:border-neutral-800">
-        <Rocket className="h-5 w-5" />
-        <span className="text-sm font-semibold">Product OS</span>
+    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-blue-100 bg-white md:flex">
+      <div className="flex h-14 items-center gap-2 border-b border-blue-100 px-4">
+        <div className="rounded-lg bg-blue-600 p-1.5 text-white">
+          <Sparkles className="h-4 w-4" />
+        </div>
+        <span className="text-sm font-semibold text-slate-950">Simplyai Estimator</span>
       </div>
       <nav className="flex-1 overflow-y-auto p-3 text-sm">
         <SidebarGroup>
-          <SidebarLink href="/" icon={<Home className="h-4 w-4" />} label="Home" />
-          <SidebarLink href="/search" icon={<Search className="h-4 w-4" />} label="Search" />
-          <SidebarLink
-            href="/dashboards/founder"
-            icon={<LayoutDashboard className="h-4 w-4" />}
-            label="Founder dashboard"
-          />
-          <SidebarLink
-            href="/dashboards/technical"
-            icon={<LayoutDashboard className="h-4 w-4" />}
-            label="Technical dashboard"
-          />
+          <SidebarLink href="/" icon={<Home className="h-4 w-4" />} label="Estimator home" />
+          <SidebarLink href="/" icon={<LayoutDashboard className="h-4 w-4" />} label="Client dashboards" />
+          <SidebarLink href="/" icon={<Calculator className="h-4 w-4" />} label="Project estimates" />
+          <SidebarLink href="/" icon={<Settings className="h-4 w-4" />} label="Global settings" />
         </SidebarGroup>
-        {MODULES.map((mod) => (
-          <SidebarGroup key={mod.key} title={mod.label}>
-            {mod.entities.map((type) => {
-              const e = ENTITIES[type];
-              if (!e.mvp) return null;
-              const Icon = e.icon;
-              return (
-                <SidebarLink
-                  key={e.slug}
-                  href={`/${e.slug}`}
-                  icon={<Icon className="h-4 w-4" />}
-                  label={e.labelPlural}
-                />
-              );
-            })}
-          </SidebarGroup>
-        ))}
-        <SidebarGroup title="Phases">
-          <SidebarLink href="/dashboards/phase/mvp" label="MVP" />
-          <SidebarLink href="/dashboards/phase/v1" label="v1" />
-          <SidebarLink href="/dashboards/phase/v1_5" label="v1.5" />
-          <SidebarLink href="/dashboards/phase/v2" label="v2" />
+        <SidebarGroup title="Database-ready model">
+          <SidebarStatic label="Users" />
+          <SidebarStatic label="Clients" />
+          <SidebarStatic label="Projects" />
+          <SidebarStatic label="Processes" />
+          <SidebarStatic label="Estimates" />
+          <SidebarStatic label="Audit history" />
         </SidebarGroup>
       </nav>
-      <div className="border-t border-neutral-200 p-3 dark:border-neutral-800">
+      <div className="border-t border-blue-100 p-3 text-xs text-slate-500">
         <Link
-          href="/new"
-          className="flex items-center justify-center gap-2 rounded-md bg-neutral-900 px-3 py-2 text-xs font-medium text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
+          href="/"
+          className="block rounded-md bg-blue-50 px-3 py-2 text-center font-medium text-blue-700 hover:bg-blue-100"
         >
-          <Plus className="h-4 w-4" /> New record
+          Future Firebase/Supabase persistence
         </Link>
       </div>
     </aside>
   );
+}
+
+function SidebarStatic({ label }: { label: string }) {
+  return <div className="rounded-md px-2 py-1.5 text-slate-500">{label}</div>;
 }
 
 function SidebarGroup({ title, children }: { title?: string; children: React.ReactNode }) {
@@ -87,7 +69,7 @@ function SidebarLink({
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-2 rounded-md px-2 py-1.5 text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800",
+        "flex items-center gap-2 rounded-md px-2 py-1.5 text-slate-700 hover:bg-blue-50 hover:text-blue-700",
       )}
     >
       {icon}
