@@ -2,6 +2,7 @@ import NextAuth, { type DefaultSession, type NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import { randomBytes } from "crypto";
 import { prisma } from "./db";
 
 declare module "next-auth" {
@@ -22,7 +23,7 @@ const simplyaiDomain = "@simplyai.com.au";
 const hasDatabase = !!process.env.DATABASE_URL;
 const fallbackPreviewSecret =
   process.env.VERCEL_ENV === "preview" && !hasDatabase
-    ? `simplyai-estimator-preview-${process.env.VERCEL_URL ?? "local"}`
+    ? randomBytes(32).toString("base64url")
     : undefined;
 
 function isSimplyaiEmail(email: string | null | undefined) {
